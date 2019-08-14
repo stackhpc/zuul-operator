@@ -7,6 +7,7 @@
     post-run: playbooks/zuul-operator-functional-k8s/post.yaml
     nodeset: ubuntu-xenial
     required-projects:
+      - github.com/pravega/zookeeper-operator
       - zuul/zuul-operator
 
 - job:

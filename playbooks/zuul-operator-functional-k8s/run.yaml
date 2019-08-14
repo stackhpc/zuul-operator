@@ -21,6 +21,15 @@
       args:
         chdir: "{{ zuul.projects['opendev.org/zuul/zuul-operator'].src_dir }}"
 
+    - name: Deploy Zookeeper operator
+      command: kubectl create -f {{ item }}
+      args:
+        chdir: "{{ zuul.projects['github.com/pravega/zookeeper-operator'].src_dir }}/deploy"
+      loop:
+        - crds/zookeeper_v1beta1_zookeepercluster_crd.yaml
+        - default_ns/rbac.yaml
+        - default_ns/operator.yaml
+
     - name: wait for pods to come up
       command: kubectl get pods -o json
       register: kubectl_get_pods
