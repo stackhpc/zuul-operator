@@ -22,14 +22,15 @@
         - context: .
           dockerfile: build/Dockerfile
           repository: zuul/zuul-operator
+
 - project:
     check:
       jobs:
         - zuul-operator-build-image
-        - zuul-operator-functional-k8s:
-            dependencies: zuul-operator-build-image
+    #     - zuul-operator-functional-k8s:
+    #         dependencies: zuul-operator-build-image
     gate:
       jobs:
         - zuul-operator-build-image
-        - zuul-operator-functional-k8s:
-            dependencies: zuul-operator-build-image
+    #     - zuul-operator-functional-k8s:
+    #         dependencies: zuul-operator-build-image
