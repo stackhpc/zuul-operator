@@ -1,10 +1,14 @@
 - name: start kubernetes and install all dependencies
   hosts: all
-
+  pre_tasks:
+    - name: Install openshift client for k8s tasks
+      command: python3 -m pip install --user openshift
   roles:
-    - role: bindep
     - role: clear-firewall
     - role: install-kubernetes
+      vars:
+        minikube_dns_resolvers:
+          - '1.1.1.1'
+          - '8.8.8.8'
     - role: use-buildset-registry
       buildset_registry_docker_user: root
-      docker_version: 18.06.1~ce~3-0~ubuntu

@@ -16,18 +16,18 @@ spec:
       containers:
         - name: ansible
           command:
-          - /uid_entrypoint
           - /usr/local/bin/ao-logs
           - /tmp/ansible-operator/runner
           - stdout
-          # TODO: use a public name
-          image: "zuul/zuul-operator"
+          image: "docker.io/zuul/zuul-operator"
+          imagePullPolicy: "IfNotPresent"
           volumeMounts:
           - mountPath: /tmp/ansible-operator/runner
             name: runner
             readOnly: true
         - name: operator
-          image: "zuul/zuul-operator"
+          image: "docker.io/zuul/zuul-operator"
+          imagePullPolicy: "IfNotPresent"
           volumeMounts:
           - mountPath: /tmp/ansible-operator/runner
             name: runner

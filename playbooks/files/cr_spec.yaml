@@ -1,0 +1,30 @@
+# Render kubernetes resources using:
+# INPUT=$(yaml-to-dhall "(./conf/zuul/input.dhall).Input.Type" < playbooks/files/cr_spec.yaml)
+# dhall-to-yaml --omit-empty --explain <<< "(./conf/zuul/resources.dhall ($INPUT)).Components.Zuul.Scheduler"
+# Or
+# dhall-to-yaml --omit-empty --explain <<< "(./conf/zuul/resources.dhall ($INPUT)).List"
+
+executor:
+  count: 1
+  ssh_key:
+    secretName: executor-ssh-key
+merger:
+  count: 1
+scheduler:
+  config:
+    secretName: zuul-yaml-conf
+launcher:
+  config:
+    secretName: nodepool-yaml-conf
+connections:
+  gits:
+    - baseurl: https://opendev.org
+      name: opendev.org
+external_config:
+  kubernetes:
+    secretName: nodepool-kube-config
+    key: kube.config
+
+# extra
+name: zuul
+web: {}

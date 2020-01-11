@@ -1,0 +1,32 @@
+# TODO: Generate tls cert secret
+
+- name: Convert spec to template input
+  json_to_dhall:
+    schema: "({{ zuul_app_path }}/input.dhall).Input.Type"
+    json: "{{ rspec | to_json }}"
+  vars:
+    rspec:
+      name: "{{ zuul_name }}"
+      merger: "{{ raw_spec['merger'] | default({}) }}"
+      executor: "{{ raw_spec['executor'] | default({}) }}"
+      web: "{{ raw_spec['web'] | default({}) }}"
+      scheduler: "{{ raw_spec['scheduler'] | default({}) }}"
+      launcher: "{{ raw_spec['launcher'] | default({}) }}"
+      external_config: "{{ raw_spec['external_config'] | default({}) }}"
+      connections: "{{ raw_spec['connections'] | default({}) }}"
+  register: _cr_input
+
+- name: Convert expression to kubernetes objects
+  dhall_to_json:
+    expression: "{{ zuul_app_path }}/resources.dhall {{ _cr_input.result }}"
+  register: _json
+
+- name: Apply objects
+  k8s:
+    state: "{{ state }}"
+    namespace: "{{ namespace }}"
+    definition: "{{ item }}"
+    apply: yes
+  loop: "{{ _json.result['List']['items'] }}"
+
+# TODO: Patch services when their configuration changed

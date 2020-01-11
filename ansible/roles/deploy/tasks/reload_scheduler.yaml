@@ -1,3 +1,0 @@
----
-- name: Add scheduler pod to the inventory
-  debug: msg="TODO..."

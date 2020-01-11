@@ -1,0 +1,21 @@
+- hosts: all
+  roles:
+    - collect-container-logs
+  post_tasks:
+    - name: Describe resources
+      command: "kubectl describe {{ item }}"
+      loop:
+        - pods
+        - deployments
+        - statefulsets
+        - services
+        - secrets
+        - configmaps
+
+    - name: Grab scheduler logs
+      command: "kubectl logs statefulset/zuul-scheduler"
+      ignore_errors: yes
+
+    - name: Grab executor logs
+      command: "kubectl logs statefulset/zuul-executor"
+      ignore_errors: yes

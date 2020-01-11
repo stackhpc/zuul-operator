@@ -1,0 +1,76 @@
+# Run operator role locally, without the operator-framework using:
+# ansible-playbook playbooks/files/local.yaml
+#   Add '-e k8s_state=absent'  to remove resources
+
+- hosts: localhost
+  gather_facts: no
+  vars:
+    zuul_app_path: ../../conf/zuul
+    meta:
+      name: zuul
+      namespace: default
+    spec:
+      executor:
+        count: 1
+        ssh_key:
+          secretName: executor-ssh-key
+      merger:
+        count: 1
+      scheduler:
+        config:
+          secretName: zuul-yaml-conf
+      launcher:
+        config:
+          secretName: nodepool-yaml-conf
+      connections:
+        gits:
+          - baseurl: https://opendev.org
+            name: opendev.org
+  pre_tasks:
+    - name: "Create necessary secrets"
+      k8s:
+        namespace: "{{ meta.namespace }}"
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: "{{ item.name }}"
+          stringData:
+            id_rsa: "{{ item.content }}"
+            main.yaml: "{{ item.content }}"
+            nodepool.yaml: "{{ item.content }}"
+      loop:
+        - name: executor-ssh-key
+          file: id_rsa
+          content: "{{ lookup('file', '~/.ssh/id_rsa') }}"
+        - name: zuul-yaml-conf
+          file: main.yaml
+          content: |
+            - tenant:
+                name: local
+                source:
+                  opendev.org:
+                    config-projects:
+                      - zuul/zuul-base-jobs
+                    untrusted-projects:
+                      - zuul/zuul-jobs
+        - name: nodepool-yaml-conf
+          file: nodepool.yaml
+          content: |
+            labels:
+              - name: pod-centos
+                min-ready: 1
+            providers:
+              - name: kube-cluster
+                driver: openshiftpods
+                context: local
+                max-pods: 15
+                pools:
+                - name: default
+                  labels:
+                    - name: pod-centos
+                      image: quay.io/software-factory/pod-centos-7
+                      python-path: /bin/python2
+
+  roles:
+    - zuul

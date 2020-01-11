@@ -8,7 +8,6 @@ metadata:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
-  creationTimestamp: null
   name: zuul-operator
 rules:
 - apiGroups:
@@ -16,29 +15,36 @@ rules:
   resources:
   - pods
   - services
+  - services/finalizers
   - endpoints
   - persistentvolumeclaims
   - events
   - configmaps
   - secrets
+  - ingresses
   verbs:
-  - '*'
-- apiGroups:
-  - ""
-  resources:
-  - namespaces
-  verbs:
+  - create
+  - delete
   - get
+  - list
+  - patch
+  - update
+  - watch
 - apiGroups:
   - apps
-  - extensions
   resources:
   - deployments
   - daemonsets
   - replicasets
   - statefulsets
   verbs:
-  - '*'
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
 - apiGroups:
   - monitoring.coreos.com
   resources:
@@ -55,18 +61,30 @@ rules:
   verbs:
   - update
 - apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+- apiGroups:
+  - apps
+  resources:
+  - replicasets
+  - deployments
+  verbs:
+  - get
+- apiGroups:
   - operator.zuul-ci.org
   resources:
   - '*'
   verbs:
-  - '*'
-- apiGroups:
-  - cr.client-go.k8s.io
-  resources:
-  - '*'
-  verbs:
-  - '*'
-
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
 
 ---
 
@@ -80,16 +98,4 @@ subjects:
 roleRef:
   kind: Role
   name: zuul-operator
-  apiGroup: rbac.authorization.k8s.io
----
-kind: RoleBinding
-apiVersion: rbac.authorization.k8s.io/v1
-metadata:
-  name: zuul-operator-zookeeper
-subjects:
-- kind: ServiceAccount
-  name: zuul-operator
-roleRef:
-  kind: Role
-  name: zookeeper-operator
   apiGroup: rbac.authorization.k8s.io

@@ -1,18 +1,26 @@
 - job:
-    description: |
-      Test that zuul-operator works in Kubernetes (currently debugging use)
-    name: zuul-operator-functional-k8s
-    pre-run: playbooks/zuul-operator-functional-k8s/pre.yaml
-    run: playbooks/zuul-operator-functional-k8s/run.yaml
-    post-run: playbooks/zuul-operator-functional-k8s/post.yaml
-    nodeset: ubuntu-xenial
-    required-projects:
-      - github.com/pravega/zookeeper-operator
-      - zuul/zuul-operator
+    description: Operator integration tests
+    name: zuul-operator-functional
+    abstract: true
+    run: playbooks/zuul-operator-functional/run.yaml
+    post-run: playbooks/zuul-operator-functional/post.yaml
+    requires: docker-image
+    vars:
+      # We disable userland-proxy to enable scheduler deployement to connect to the gearman service
+      # see: https://github.com/eclipse/che/issues/8134
+      docker_userland_proxy: false
 
 - job:
-    description: |
-      Build's Zuul operator image taken from buildset registry
+    description: Operator integration tests with Kubernetes
+    name: zuul-operator-functional-k8s
+    parent: zuul-operator-functional
+    pre-run: playbooks/zuul-operator-functional/pre-k8s.yaml
+    nodeset: ubuntu-bionic
+    vars:
+      namespace: 'default'
+
+- job:
+    description: Image and buildset registry job
     name: zuul-operator-build-image
     parent: opendev-build-docker-image
     allowed-projects: zuul/zuul-operator
@@ -27,10 +35,10 @@
     check:
       jobs:
         - zuul-operator-build-image
-    #     - zuul-operator-functional-k8s:
-    #         dependencies: zuul-operator-build-image
+        - zuul-operator-functional-k8s:
+            dependencies: zuul-operator-build-image
     gate:
       jobs:
         - zuul-operator-build-image
-    #     - zuul-operator-functional-k8s:
-    #         dependencies: zuul-operator-build-image
+        - zuul-operator-functional-k8s:
+            dependencies: zuul-operator-build-image

@@ -1,3 +1,0 @@
----
-- name: Load scheduler queue
-  debug: msg="TODO..."

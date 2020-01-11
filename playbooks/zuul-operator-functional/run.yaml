@@ -1,0 +1,115 @@
+- name: install and start zuul operator
+  hosts: all
+  tasks:
+    - name: Setup CRD
+      command: make install
+      args:
+        chdir: "{{ zuul.projects['opendev.org/zuul/zuul-operator'].src_dir }}"
+
+    - name: Generate executor ssh key
+      command: ssh-keygen -t rsa -m PEM -N '' -f 'id_rsa' -q -C 'zuul-executor'
+      args:
+        creates: id_rsa
+
+    # Note: Using lookup(file) is somehow failing with 'NoneType' object has no attribute 'startswith'
+    - name: Read generated ssh key
+      command: cat id_rsa
+      register: _ssh_key
+
+    - name: Setup user provided secrets
+      k8s:
+        namespace: "{{ namespace }}"
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: "{{ item.name }}"
+          stringData: "{{ item.data }}"
+      loop:
+        - name: executor-ssh-key
+          data:
+            id_rsa: "{{ _ssh_key.stdout }}"
+
+        - name: zuul-yaml-conf
+          data:
+            main.yaml: |
+              - tenant:
+                  name: local
+                  source:
+                    opendev.org:
+                      config-projects:
+                        - zuul/zuul-base-jobs
+                      untrusted-projects:
+                        - zuul/zuul-jobs
+
+        - name: nodepool-yaml-conf
+          data:
+            nodepool.yaml: |
+              labels:
+                - name: pod-centos
+                  min-ready: 1
+              providers:
+                - name: kube-cluster
+                  driver: openshiftpods
+                  context: local
+                  max-pods: 15
+                  pools:
+                  - name: default
+                    labels:
+                      - name: pod-centos
+                        image: quay.io/software-factory/pod-centos-7
+                        python-path: /bin/python2
+
+        - name: nodepool-kube-config
+          data:
+            kube.config: |
+              apiVersion: v1
+              kind: Config
+              preferences: {}
+              clusters:
+              - cluster:
+                  server: https://10.43.0.1:8043
+                  insecure-skip-tls-verify: true
+                name: local
+              users:
+              - name: nodepool
+                user:
+                  token: test-token
+              contexts:
+              - context:
+                  cluster: local
+                  user: nodepool
+                  namespace: default
+                name: local
+              current-context: local
+
+    - name: Deploy CR
+      command: make deploy-cr
+      args:
+        chdir: "{{ zuul.projects['opendev.org/zuul/zuul-operator'].src_dir }}"
+
+    - name: Wait maximum 4 minutes for the scheduler pod
+      shell: |
+        for idx in $(seq 24); do
+          date;
+          for res in statefulsets deployments pods; do echo == $res ==; kubectl get $res; done
+          kubectl get pod zuul-scheduler-0 2> /dev/null && break || :
+          sleep 10;
+        done
+
+    - name: Wait 2 minutes for the scheduler pod to be ready
+      command: kubectl wait --for=condition=Ready --timeout=120s pod/zuul-scheduler-0
+
+    - name: Wait 4 minutes for scheduler to settle
+      command: kubectl logs pod/zuul-scheduler-0
+      register: _scheduler_log
+      until: "'Full reconfiguration complete' in _scheduler_log.stdout"
+      delay: 10
+      retries: 24
+
+    - name: Wait 2 minutes for the executor pod to be ready
+      command: kubectl wait --for=condition=Ready --timeout=120s pod/zuul-executor-0
+
+    - name: Wait an extra 2 minutes for the services to settle
+      pause:
+        minutes: 2
