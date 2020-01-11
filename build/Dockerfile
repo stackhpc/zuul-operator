@@ -20,6 +20,20 @@ RUN curl -OL https://github.com/dhall-lang/dhall-haskell/releases/download/1.29.
 # Back to the default operator user
 USER 1001
 
+# Install dhall libraries
+RUN git clone --branch v13.0.0 --depth 1 https://github.com/dhall-lang/dhall-lang       /opt/ansible/dhall-lang                    \
+  && git clone --branch v3.0.0 --depth 1 https://github.com/dhall-lang/dhall-kubernetes /opt/ansible/dhall-kubernetes
+ENV DHALL_PRELUDE=/opt/ansible/dhall-lang/Prelude/package.dhall
+ENV DHALL_KUBERNETES=/opt/ansible/dhall-kubernetes/package.dhall
+
+# Copy configuration
+COPY conf/ /opt/ansible/conf/
+
+# Cache dhall objects
+RUN echo 'let Prelude = ~/conf/Prelude.dhall let Kubernetes = ~/conf/Kubernetes.dhall in "OK"' | \
+    env DHALL_PRELUDE=/opt/ansible/dhall-lang/Prelude/package.dhall                              \
+        DHALL_KUBERNETES=/opt/ansible/dhall-kubernetes/package.dhall dhall-to-json
+
 # Copy ansible operator requirements
 COPY watches.yaml ${HOME}/watches.yaml
 
