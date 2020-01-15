@@ -205,9 +205,15 @@ let {- This method renders the zuul.conf
           in      ''
                   [gearman]
                   server=scheduler
+                  ssl_ca=/etc/zuul-gearman/ca.pem
+                  ssl_cert=/etc/zuul-gearman/client.pem
+                  ssl_key=/etc/zuul-gearman/client.key
 
                   [gearman_server]
                   start=true
+                  ssl_ca=/etc/zuul-gearman/ca.pem
+                  ssl_cert=/etc/zuul-gearman/server.pem
+                  ssl_key=/etc/zuul-gearman/server.key
 
                   [zookeeper]
                   hosts=${zk-hosts}
@@ -622,13 +628,19 @@ in      \(input : Input)
                         , dir = "/etc/zuul-scheduler"
                         }
 
+                  let gearman-config =
+                        Volume::{
+                        , name = input.name ++ "-gearman-tls"
+                        , dir = "/etc/zuul-gearman"
+                        }
+
                   let executor-ssh-key =
                         Volume::{
                         , name = input.executor.ssh_key.secretName
                         , dir = "/etc/zuul-executor"
                         }
 
-                  let conn-keys = [] : List Volume.Type
+                  let conn-keys = [ gearman-config ]
 
                   let web-volumes = [ etc-zuul ]
 

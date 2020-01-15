@@ -1,4 +1,5 @@
-# TODO: Generate tls cert secret
+- include_role:
+    name: zuul-ensure-gearman-tls
 
 - name: Convert spec to template input
   json_to_dhall:
