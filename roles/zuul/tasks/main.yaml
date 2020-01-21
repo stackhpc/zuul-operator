@@ -1,5 +1,8 @@
 - include_role:
-    name: zuul-ensure-gearman-tls
+    name: "{{ item }}"
+  loop:
+    - zuul-lookup-conf
+    - zuul-ensure-gearman-tls
 
 - name: Convert spec to template input
   json_to_dhall:
@@ -30,4 +33,6 @@
     apply: yes
   loop: "{{ _json.result['List']['items'] }}"
 
-# TODO: Patch services when their configuration changed
+- include_role:
+    name: zuul-restart-when-zuul-conf-changed
+  when: zuul_conf_secret.data is defined
