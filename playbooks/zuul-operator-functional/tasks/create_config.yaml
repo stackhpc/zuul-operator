@@ -50,6 +50,11 @@
             - include_role:
                 name: start-zuul-console
             - debug: msg='Demo job is running'
+            - name: check job volume
+              stat:
+                path: /system-dbus
+              register: _job_volume
+              failed_when: not _job_volume.stat.isdir
             - pause: seconds=30
 
 - name: commit config

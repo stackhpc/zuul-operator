@@ -25,6 +25,17 @@ external_config:
     secretName: nodepool-kube-config
     key: kube.config
 
+job_volumes:
+  - context: trusted
+    access: ro
+    path: /authdaemon/token
+    dir: /authdaemon
+    volume:
+      name: gcp-auth
+      hostPath:
+        path: /var/authdaemon/executor
+        type: DirectoryOrCreate
+
 # extra
 name: zuul
 web: {}

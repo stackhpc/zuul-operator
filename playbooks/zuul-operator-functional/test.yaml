@@ -88,6 +88,16 @@
                 kubernetes:
                   secretName: nodepool-kube-config
                   key: kube.config
+              job_volumes:
+                - context: trusted
+                  access: rw
+                  path: /system-dbus/
+                  dir: /system-dbus/
+                  volume:
+                    name: system-dbus
+                    hostPath:
+                      path: /run/dbus
+                      type: DirectoryOrCreate
 
     - name: ensure a job is running
       when: skip_check is not defined

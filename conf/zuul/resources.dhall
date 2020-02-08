@@ -11,6 +11,8 @@ let Schemas = ./input.dhall
 
 let Input = Schemas.Input.Type
 
+let JobVolume = Schemas.JobVolume.Type
+
 let UserSecret = Schemas.UserSecret.Type
 
 let Label = { mapKey : Text, mapValue : Text }
@@ -34,11 +36,13 @@ let {- A high level description of a component such as the scheduler or the laun
           , container : Kubernetes.Container.Type
           , data-dir : List Volume.Type
           , volumes : List Volume.Type
+          , extra-volumes : List Kubernetes.Volume.Type
           , claim-size : Natural
           }
       , default =
           { data-dir = [] : List Volume.Type
           , volumes = [] : List Volume.Type
+          , extra-volumes = [] : List Kubernetes.Volume.Type
           , claim-size = 0
           }
       }
@@ -72,6 +76,22 @@ let DefaultKey =
             secret
 
 let newlineSep = Prelude.Text.concatSep "\n"
+
+let {- This methods process the optional input.job-volumes list. It takes:
+    * the desired output type
+    * a function that goes from JobVolume to the output type
+    * the input.job-volumes spec attribute
+
+    Then it returns a list of the output type
+    -} mkJobVolume =
+          \(OutputType : Type)
+      ->  \(f : JobVolume -> OutputType)
+      ->  \(job-volumes : Optional (List JobVolume))
+      ->  merge
+            { None = [] : List OutputType
+            , Some = Prelude.List.map JobVolume OutputType f
+            }
+            job-volumes
 
 let {- This method renders the zuul.conf
     -} mkZuulConf =
@@ -197,6 +217,29 @@ let {- This method renders the zuul.conf
                             ''
                   )
 
+          let job-volumes =
+                mkJobVolume
+                  Text
+                  (     \(job-volume : JobVolume)
+                    ->  let {- TODO: add support for abritary lists of path per (context, access)
+                            -} context =
+                              merge
+                                { trusted = "trusted", untrusted = "untrusted" }
+                                job-volume.context
+
+                        let access =
+                              merge
+                                { None = "ro"
+                                , Some =
+                                        \(access : < ro | rw >)
+                                    ->  merge { ro = "ro", rw = "rw" } access
+                                }
+                                job-volume.access
+
+                        in  "${context}_${access}_paths=${job-volume.path}"
+                  )
+                  input.job_volumes
+
           in      ''
                   [gearman]
                   server=scheduler
@@ -227,6 +270,10 @@ let {- This method renders the zuul.conf
                   [executor]
                   private_key_file=/etc/zuul-executor/${executor-key-name}
                   manage_ansible=false
+
+                  ''
+              ++  Prelude.Text.concatSep "\n" job-volumes
+              ++  ''
 
                   [connection "sql"]
                   driver=sql
@@ -327,6 +374,7 @@ in      \(input : Input)
                     , volumes = Some
                         (   mkVolumeSecret component.volumes
                           # mkVolumeEmptyDir component.data-dir
+                          # component.extra-volumes
                         )
                     , containers = [ component.container ]
                     , automountServiceAccountToken = Some False
@@ -706,6 +754,16 @@ in      \(input : Input)
                                 , count = 1
                                 , data-dir = zuul-data-dir
                                 , volumes = executor-volumes
+                                , extra-volumes =
+                                    let job-volumes =
+                                          mkJobVolume
+                                            Kubernetes.Volume.Type
+                                            (     \(job-volume : JobVolume)
+                                              ->  job-volume.volume
+                                            )
+                                            input.job_volumes
+
+                                    in  job-volumes
                                 , claim-size = 0
                                 , container = Kubernetes.Container::{
                                   , name = "executor"
@@ -719,10 +777,26 @@ in      \(input : Input)
                                       }
                                     ]
                                   , env = Some zuul-env
-                                  , volumeMounts = Some
-                                      ( mkVolumeMount
-                                          (executor-volumes # zuul-data-dir)
-                                      )
+                                  , volumeMounts =
+                                      let job-volumes-mount =
+                                            mkJobVolume
+                                              Volume.Type
+                                              (     \(job-volume : JobVolume)
+                                                ->  Volume::{
+                                                    , name =
+                                                        job-volume.volume.name
+                                                    , dir = job-volume.dir
+                                                    }
+                                              )
+                                              input.job_volumes
+
+                                      in  Some
+                                            ( mkVolumeMount
+                                                (   executor-volumes
+                                                  # zuul-data-dir
+                                                  # job-volumes-mount
+                                                )
+                                            )
                                   , securityContext = Some Kubernetes.SecurityContext::{
                                     , privileged = Some True
                                     }

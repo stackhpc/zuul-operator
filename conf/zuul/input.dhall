@@ -11,6 +11,14 @@ The `Schemas` record contains schemas for the CR spec attributes.
 The `Input` record is the Zuul CR spec schema.
 -}
 
+let JobVolume =
+      { context : < trusted | untrusted >
+      , access : Optional < ro | rw >
+      , path : Text
+      , dir : Text
+      , volume : (../Kubernetes.dhall).Volume.Type
+      }
+
 let UserSecret = { secretName : Text, key : Optional Text }
 
 let Gerrit =
@@ -105,6 +113,7 @@ let Schemas =
               , amazon = None UserSecret
               }
           }
+      , JobVolume = { Type = JobVolume, default.access = Some < ro | rw >.ro }
       , UserSecret = { Type = UserSecret, default.key = None Text }
       , Gerrit.Type = Gerrit
       , GitHub.Type = GitHub
@@ -124,6 +133,7 @@ let Input =
           , zookeeper : Optional UserSecret
           , external_config : Schemas.ExternalConfigs.Type
           , connections : Schemas.Connections.Type
+          , job_volumes : Optional (List JobVolume)
           }
       , default =
           { database = None UserSecret
@@ -135,6 +145,7 @@ let Input =
           , executor = Schemas.Executor.default
           , launcher = Schemas.Launcher.default
           , connections = Schemas.Connections.default
+          , job_volumes = None (List JobVolume)
           }
       }
 
