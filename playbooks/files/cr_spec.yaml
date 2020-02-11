@@ -20,12 +20,12 @@ connections:
   gits:
     - baseurl: https://opendev.org
       name: opendev.org
-external_config:
+externalConfig:
   kubernetes:
     secretName: nodepool-kube-config
     key: kube.config
 
-job_volumes:
+jobVolumes:
   - context: trusted
     access: ro
     path: /authdaemon/token

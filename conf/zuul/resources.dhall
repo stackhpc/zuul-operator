@@ -238,7 +238,7 @@ let {- This method renders the zuul.conf
 
                         in  "${context}_${access}_paths=${job-volume.path}"
                   )
-                  input.job_volumes
+                  input.jobVolumes
 
           in      ''
                   [gearman]
@@ -761,7 +761,7 @@ in      \(input : Input)
                                             (     \(job-volume : JobVolume)
                                               ->  job-volume.volume
                                             )
-                                            input.job_volumes
+                                            input.jobVolumes
 
                                     in  job-volumes
                                 , claim-size = 0
@@ -788,7 +788,7 @@ in      \(input : Input)
                                                     , dir = job-volume.dir
                                                     }
                                               )
-                                              input.job_volumes
+                                              input.jobVolumes
 
                                       in  Some
                                             ( mkVolumeMount
@@ -884,7 +884,7 @@ in      \(input : Input)
                                     }
                                   ]
                           }
-                          input.external_config.openstack
+                          input.externalConfig.openstack
 
                   let kubernetes-config =
                         merge
@@ -897,7 +897,7 @@ in      \(input : Input)
                                     }
                                   ]
                           }
-                          input.external_config.kubernetes
+                          input.externalConfig.kubernetes
 
                   let nodepool-env =
                         mkEnvVarValue
@@ -906,12 +906,12 @@ in      \(input : Input)
                               , OS_CLIENT_CONFIG_FILE =
                                       "/etc/nodepool-openstack/"
                                   ++  DefaultKey
-                                        input.external_config.openstack
+                                        input.externalConfig.openstack
                                         "clouds.yaml"
                               , KUBECONFIG =
                                       "/etc/nodepool-kubernetes/"
                                   ++  DefaultKey
-                                        input.external_config.kubernetes
+                                        input.externalConfig.kubernetes
                                         "kube.config"
                               }
                           )

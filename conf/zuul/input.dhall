@@ -131,21 +131,21 @@ let Input =
           , launcher : Schemas.Launcher.Type
           , database : Optional UserSecret
           , zookeeper : Optional UserSecret
-          , external_config : Schemas.ExternalConfigs.Type
+          , externalConfig : Schemas.ExternalConfigs.Type
           , connections : Schemas.Connections.Type
-          , job_volumes : Optional (List JobVolume)
+          , jobVolumes : Optional (List JobVolume)
           }
       , default =
           { database = None UserSecret
           , zookeeper = None UserSecret
-          , external_config = Schemas.ExternalConfigs.default
+          , externalConfig = Schemas.ExternalConfigs.default
           , merger = Schemas.Merger.default
           , web = Schemas.Web.default
           , scheduler = Schemas.Scheduler.default
           , executor = Schemas.Executor.default
           , launcher = Schemas.Launcher.default
           , connections = Schemas.Connections.default
-          , job_volumes = None (List JobVolume)
+          , jobVolumes = None (List JobVolume)
           }
       }
 

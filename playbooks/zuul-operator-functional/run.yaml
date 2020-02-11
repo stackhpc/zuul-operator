@@ -111,7 +111,7 @@
             gits:
               - baseurl: https://opendev.org
                 name: opendev.org
-          external_config:
+          externalConfig:
             kubernetes:
               secretName: nodepool-kube-config
               key: kube.config

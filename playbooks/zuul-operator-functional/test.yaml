@@ -84,11 +84,11 @@
                     name: opendev.org
                   - baseurl: "git://{{ ansible_all_ipv4_addresses[0] }}/"
                     name: local-git
-              external_config:
+              externalConfig:
                 kubernetes:
                   secretName: nodepool-kube-config
                   key: kube.config
-              job_volumes:
+              jobVolumes:
                 - context: trusted
                   access: rw
                   path: /system-dbus/

@@ -16,8 +16,8 @@
       web: "{{ raw_spec['web'] | default({}) }}"
       scheduler: "{{ raw_spec['scheduler'] | default({}) }}"
       launcher: "{{ raw_spec['launcher'] | default({}) }}"
-      job_volumes: "{{ raw_spec['job_volumes'] | default([]) }}"
-      external_config: "{{ raw_spec['external_config'] | default({}) }}"
+      jobVolumes: "{{ raw_spec['jobVolumes'] | default([]) }}"
+      externalConfig: "{{ raw_spec['externalConfig'] | default({}) }}"
       connections: "{{ raw_spec['connections'] | default({}) }}"
   register: _cr_input
 
