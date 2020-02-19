@@ -4,7 +4,8 @@ FROM quay.io/operator-framework/ansible-operator:v0.13.0
 USER root
 
 # See: https://github.com/operator-framework/operator-sdk/issues/2384
-RUN pip3 install --upgrade openshift
+# Install gear to connect to the scheduler gearman
+RUN pip3 install --upgrade openshift gear
 
 # unarchive: bzip2 and tar
 # generate zuul ssh-keys or certificate: openssh and openssl
