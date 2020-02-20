@@ -57,6 +57,23 @@
           AYLhYdFc748RTCVJzka6uAQ69QJuv0wSP0+MHKy39OrnOSDZUGm1dkeTQwqpWA=
 
 - job:
+    description: Build Docker images and upload to Docker Hub.
+    name: zuul-operator-upload-image
+    parent: opendev-upload-docker-image
+    allowed-projects: zuul/zuul-operator
+    secrets:
+      name: docker_credentials
+      secret: zuul-operator-dockerhub
+      pass-to-parent: true
+    requires:
+      - zuul-container-image
+      - zuul-registry-container-image
+      - nodepool-container-image
+    provides:
+      - zuul-operator-container-image
+    vars: *image_vars
+
+- job:
     description: Promote previously uploaded images.
     name: zuul-operator-promote-image
     parent: opendev-promote-docker-image
@@ -77,9 +94,9 @@
             dependencies: zuul-operator-build-image
     gate:
       jobs:
-        - zuul-operator-build-image
+        - zuul-operator-upload-image
         - zuul-operator-functional-k8s:
-            dependencies: zuul-operator-build-image
+            dependencies: zuul-operator-upload-image
     promote:
       jobs:
         - zuul-operator-promote-image
