@@ -1,5 +1,12 @@
 FROM quay.io/operator-framework/ansible-operator:v0.13.0
 
+# dhall versions and digests
+ARG DHALL_VERSION=1.30.0
+ARG DHALL_JSON_VERSION=1.6.2
+ARG DHALL_JSON_DIGEST=ea37627c4e19789af33def099d4cb145b874c03b4d5b98cb33ce06be1debf4f3
+ARG DHALL_LANG_REF=v14.0.0
+ARG DHALL_KUBE_REF=v3.0.0
+
 # Install extra requirements
 USER root
 
@@ -13,17 +20,17 @@ RUN pip3 install --upgrade openshift gear
 RUN dnf install -y bzip2 tar openssh openssl git
 
 # Install dhall-to-json
-RUN curl -OL https://github.com/dhall-lang/dhall-haskell/releases/download/1.29.0/dhall-json-1.6.1-x86_64-linux.tar.bz2            \
-  && echo "7e65f933fb215629d18d23bc774688c598d4c11b62865f3546ee23ae36b25290  dhall-json-1.6.1-x86_64-linux.tar.bz2" | sha256sum -c \
-  && tar -xf dhall-json-1.6.1-x86_64-linux.tar.bz2 --strip-components=2 -j --mode='a+x' -C /usr/bin                                \
-  && rm dhall-json-1.6.1-x86_64-linux.tar.bz2
+RUN curl -OL https://github.com/dhall-lang/dhall-haskell/releases/download/$DHALL_VERSION/dhall-json-$DHALL_JSON_VERSION-x86_64-linux.tar.bz2 \
+  && echo "$DHALL_JSON_DIGEST  dhall-json-$DHALL_JSON_VERSION-x86_64-linux.tar.bz2" | sha256sum -c                                            \
+  && tar -xf dhall-json-$DHALL_JSON_VERSION-x86_64-linux.tar.bz2 --strip-components=2 -j --mode='a+x' -C /usr/bin                             \
+  && rm dhall-json-$DHALL_JSON_VERSION-x86_64-linux.tar.bz2
 
 # Back to the default operator user
 USER 1001
 
 # Install dhall libraries
-RUN git clone --branch v13.0.0 --depth 1 https://github.com/dhall-lang/dhall-lang       /opt/ansible/dhall-lang                    \
-  && git clone --branch v3.0.0 --depth 1 https://github.com/dhall-lang/dhall-kubernetes /opt/ansible/dhall-kubernetes
+RUN git clone  --branch $DHALL_LANG_REF --depth 1 https://github.com/dhall-lang/dhall-lang       /opt/ansible/dhall-lang                      \
+  && git clone --branch $DHALL_KUBE_REF --depth 1 https://github.com/dhall-lang/dhall-kubernetes /opt/ansible/dhall-kubernetes
 ENV DHALL_PRELUDE=/opt/ansible/dhall-lang/Prelude/package.dhall
 ENV DHALL_KUBERNETES=/opt/ansible/dhall-kubernetes/package.dhall
 

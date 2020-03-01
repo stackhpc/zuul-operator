@@ -23,7 +23,7 @@ let File = { path : Text, content : Text }
 
 let Volume =
       { Type = { name : Text, dir : Text, files : List File }
-      , default = { files = [] : List File }
+      , default.files = [] : List File
       }
 
 let {- A high level description of a component such as the scheduler or the launcher
@@ -60,17 +60,16 @@ let {- The Kubernetes resources of a Component
 let DefaultText =
           \(value : Optional Text)
       ->  \(default : Text)
-      ->  Optional/fold Text value Text (\(some : Text) -> some) default
+      ->  merge { None = default, Some = \(some : Text) -> some } value
 
 let DefaultKey =
           \(secret : Optional UserSecret)
       ->  \(default : Text)
-      ->  Optional/fold
-            UserSecret
+      ->  merge
+            { None = default
+            , Some = \(some : UserSecret) -> DefaultText some.key default
+            }
             secret
-            Text
-            (\(some : UserSecret) -> DefaultText some.key default)
-            default
 
 let newlineSep = Prelude.Text.concatSep "\n"
 
@@ -90,12 +89,11 @@ let {- This method renders the zuul.conf
                 ->  \(list : Optional (List type))
                 ->  \(f : type -> Text)
                 ->  newlineSep
-                      ( Optional/fold
-                          (List type)
+                      ( merge
+                          { None = [] : List Text
+                          , Some = Prelude.List.map type Text f
+                          }
                           list
-                          (List Text)
-                          (Prelude.List.map type Text f)
-                          ([] : List Text)
                       )
 
           let merger-email =
@@ -115,12 +113,11 @@ let {- This method renders the zuul.conf
           let extra-kube-path = "/etc/nodepool-kubernetes/"
 
           let db-uri =
-                Optional/fold
-                  UserSecret
+                merge
+                  { None = "postgresql://zuul:${default-db-password}@db/zuul"
+                  , Some = \(some : UserSecret) -> "%(ZUUL_DB_URI)"
+                  }
                   input.database
-                  Text
-                  (\(some : UserSecret) -> "%(ZUUL_DB_URI)")
-                  "postgresql://zuul:${default-db-password}@db/zuul"
 
           let gerrits-conf =
                 mkConns
@@ -176,22 +173,20 @@ let {- This method renders the zuul.conf
                   input.connections.mqtts
                   (     \(mqtt : Schemas.Mqtt.Type)
                     ->  let user =
-                              Optional/fold
-                                Text
+                              merge
+                                { None = ""
+                                , Some = \(some : Text) -> "user=${some}"
+                                }
                                 mqtt.user
-                                Text
-                                (\(some : Text) -> "user=${some}")
-                                ""
 
                         let password =
-                              Optional/fold
-                                UserSecret
+                              merge
+                                { None = ""
+                                , Some =
+                                        \(some : UserSecret)
+                                    ->  "password=%(ZUUL_MQTT_PASSWORD)"
+                                }
                                 mqtt.password
-                                Text
-                                (     \(password : UserSecret)
-                                  ->  "password=%(ZUUL_MQTT_PASSWORD)"
-                                )
-                                ""
 
                         in  ''
                             [connection ${mqtt.name}]
@@ -349,13 +344,12 @@ in      \(input : Input)
                                 , spec = Some Kubernetes.PersistentVolumeClaimSpec::{
                                   , accessModes = [ "ReadWriteOnce" ]
                                   , resources = Some Kubernetes.ResourceRequirements::{
-                                    , requests =
-                                        toMap
-                                          { storage =
-                                                  Natural/show
-                                                    component.claim-size
-                                              ++  "Gi"
-                                          }
+                                    , requests = toMap
+                                        { storage =
+                                                Natural/show
+                                                  component.claim-size
+                                            ++  "Gi"
+                                        }
                                     }
                                   }
                                 }
@@ -443,27 +437,25 @@ in      \(input : Input)
                     }
 
         let zk-hosts =
-              Optional/fold
-                UserSecret
+              merge
+                { None = "zk"
+                , Some = \(some : UserSecret) -> "%(ZUUL_ZK_HOSTS)"
+                }
                 input.zookeeper
-                Text
-                (\(some : UserSecret) -> "%(ZUUL_ZK_HOSTS)")
-                "zk"
 
         let zk-hosts-secret-env =
-              Optional/fold
-                UserSecret
+              merge
+                { None = [] : List Kubernetes.EnvVar.Type
+                , Some =
+                        \(some : UserSecret)
+                    ->  mkEnvVarSecret
+                          [ { name = "ZUUL_ZK_HOSTS"
+                            , secret = some.secretName
+                            , key = DefaultText some.key "hosts"
+                            }
+                          ]
+                }
                 input.zookeeper
-                (List Kubernetes.EnvVar.Type)
-                (     \(some : UserSecret)
-                  ->  mkEnvVarSecret
-                        [ { name = "ZUUL_ZK_HOSTS"
-                          , secret = some.secretName
-                          , key = DefaultText some.key "hosts"
-                          }
-                        ]
-                )
-                ([] : List Kubernetes.EnvVar.Type)
 
         let org = "docker.io/zuul"
 
@@ -521,80 +513,80 @@ in      \(input : Input)
                         ]
 
                   in  { Database =
-                          Optional/fold
-                            UserSecret
-                            input.database
-                            KubernetesComponent.Type
-                            (     \(some : UserSecret)
-                              ->  KubernetesComponent.default
-                            )
-                            KubernetesComponent::{
-                            , Service = Some (mkService "db" "pg" 5432)
-                            , StatefulSet = Some
-                                ( mkStatefulSet
-                                    Component::{
-                                    , name = "db"
-                                    , count = 1
-                                    , data-dir = db-volumes
-                                    , claim-size = 1
-                                    , container = Kubernetes.Container::{
+                          merge
+                            { None = KubernetesComponent::{
+                              , Service = Some (mkService "db" "pg" 5432)
+                              , StatefulSet = Some
+                                  ( mkStatefulSet
+                                      Component::{
                                       , name = "db"
-                                      , image = Some
-                                          "docker.io/library/postgres:12.1"
-                                      , imagePullPolicy = Some "IfNotPresent"
-                                      , ports =
-                                        [ Kubernetes.ContainerPort::{
-                                          , name = Some "pg"
-                                          , containerPort = 5432
-                                          }
-                                        ]
-                                      , env =
-                                          mkEnvVarValue
-                                            ( toMap
-                                                { POSTGRES_USER = "zuul"
-                                                , POSTGRES_PASSWORD =
-                                                    default-db-password
-                                                , PGDATA = "/var/lib/pg/data"
-                                                }
-                                            )
-                                      , volumeMounts = mkVolumeMount db-volumes
+                                      , count = 1
+                                      , data-dir = db-volumes
+                                      , claim-size = 1
+                                      , container = Kubernetes.Container::{
+                                        , name = "db"
+                                        , image = Some
+                                            "docker.io/library/postgres:12.1"
+                                        , imagePullPolicy = Some "IfNotPresent"
+                                        , ports =
+                                          [ Kubernetes.ContainerPort::{
+                                            , name = Some "pg"
+                                            , containerPort = 5432
+                                            }
+                                          ]
+                                        , env =
+                                            mkEnvVarValue
+                                              ( toMap
+                                                  { POSTGRES_USER = "zuul"
+                                                  , POSTGRES_PASSWORD =
+                                                      default-db-password
+                                                  , PGDATA = "/var/lib/pg/data"
+                                                  }
+                                              )
+                                        , volumeMounts =
+                                            mkVolumeMount db-volumes
+                                        }
                                       }
-                                    }
-                                )
+                                  )
+                              }
+                            , Some =
+                                    \(some : UserSecret)
+                                ->  KubernetesComponent.default
                             }
+                            input.database
                       , ZooKeeper =
-                          Optional/fold
-                            UserSecret
-                            input.zookeeper
-                            KubernetesComponent.Type
-                            (     \(some : UserSecret)
-                              ->  KubernetesComponent.default
-                            )
-                            KubernetesComponent::{
-                            , Service = Some (mkService "zk" "zk" 2181)
-                            , StatefulSet = Some
-                                ( mkStatefulSet
-                                    Component::{
-                                    , name = "zk"
-                                    , count = 1
-                                    , data-dir = zk-volumes
-                                    , claim-size = 1
-                                    , container = Kubernetes.Container::{
+                          merge
+                            { None = KubernetesComponent::{
+                              , Service = Some (mkService "zk" "zk" 2181)
+                              , StatefulSet = Some
+                                  ( mkStatefulSet
+                                      Component::{
                                       , name = "zk"
-                                      , image = Some
-                                          "docker.io/library/zookeeper"
-                                      , imagePullPolicy = Some "IfNotPresent"
-                                      , ports =
-                                        [ Kubernetes.ContainerPort::{
-                                          , name = Some "zk"
-                                          , containerPort = 2181
-                                          }
-                                        ]
-                                      , volumeMounts = mkVolumeMount zk-volumes
+                                      , count = 1
+                                      , data-dir = zk-volumes
+                                      , claim-size = 1
+                                      , container = Kubernetes.Container::{
+                                        , name = "zk"
+                                        , image = Some
+                                            "docker.io/library/zookeeper"
+                                        , imagePullPolicy = Some "IfNotPresent"
+                                        , ports =
+                                          [ Kubernetes.ContainerPort::{
+                                            , name = Some "zk"
+                                            , containerPort = 2181
+                                            }
+                                          ]
+                                        , volumeMounts =
+                                            mkVolumeMount zk-volumes
+                                        }
                                       }
-                                    }
-                                )
+                                  )
+                              }
+                            , Some =
+                                    \(some : UserSecret)
+                                ->  KubernetesComponent.default
                             }
+                            input.zookeeper
                       }
               , Zuul =
                   let zuul-image =
@@ -604,19 +596,18 @@ in      \(input : Input)
                         mkEnvVarValue (toMap { HOME = "/var/lib/zuul" })
 
                   let db-uri-secret-env =
-                        Optional/fold
-                          UserSecret
+                        merge
+                          { None = [] : List Kubernetes.EnvVar.Type
+                          , Some =
+                                  \(some : UserSecret)
+                              ->  mkEnvVarSecret
+                                    [ { name = "ZUUL_DB_URI"
+                                      , secret = some.secretName
+                                      , key = DefaultText some.key "db_uri"
+                                      }
+                                    ]
+                          }
                           input.database
-                          (List Kubernetes.EnvVar.Type)
-                          (     \(some : UserSecret)
-                            ->  mkEnvVarSecret
-                                  [ { name = "ZUUL_DB_URI"
-                                    , secret = some.secretName
-                                    , key = DefaultText some.key "db_uri"
-                                    }
-                                  ]
-                          )
-                          ([] : List Kubernetes.EnvVar.Type)
 
                   let zuul-data-dir =
                         [ Volume::{ name = "zuul-data", dir = "/var/lib/zuul" }
@@ -773,30 +764,27 @@ in      \(input : Input)
                   \(component : KubernetesComponent.Type)
               ->  let empty = [] : List Kubernetes.Resource
 
-                  in    Optional/fold
-                          Kubernetes.Service.Type
+                  in    merge
+                          { None = empty
+                          , Some =
+                                  \(some : Kubernetes.Service.Type)
+                              ->  [ Kubernetes.Resource.Service some ]
+                          }
                           component.Service
-                          (List Kubernetes.Resource)
-                          (     \(some : Kubernetes.Service.Type)
-                            ->  [ Kubernetes.Resource.Service some ]
-                          )
-                          empty
-                      # Optional/fold
-                          Kubernetes.StatefulSet.Type
+                      # merge
+                          { None = empty
+                          , Some =
+                                  \(some : Kubernetes.StatefulSet.Type)
+                              ->  [ Kubernetes.Resource.StatefulSet some ]
+                          }
                           component.StatefulSet
-                          (List Kubernetes.Resource)
-                          (     \(some : Kubernetes.StatefulSet.Type)
-                            ->  [ Kubernetes.Resource.StatefulSet some ]
-                          )
-                          empty
-                      # Optional/fold
-                          Kubernetes.Deployment.Type
+                      # merge
+                          { None = empty
+                          , Some =
+                                  \(some : Kubernetes.Deployment.Type)
+                              ->  [ Kubernetes.Resource.Deployment some ]
+                          }
                           component.Deployment
-                          (List Kubernetes.Resource)
-                          (     \(some : Kubernetes.Deployment.Type)
-                            ->  [ Kubernetes.Resource.Deployment some ]
-                          )
-                          empty
 
         in  { Components = Components
             , List =

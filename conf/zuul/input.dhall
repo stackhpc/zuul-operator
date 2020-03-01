@@ -77,7 +77,7 @@ let Schemas =
           }
       , Launcher =
           { Type = { image : Optional Text, config : UserSecret }
-          , default = { image = None Text }
+          , default.image = None Text
           }
       , Connections =
           { Type =
@@ -105,11 +105,11 @@ let Schemas =
               , amazon = None UserSecret
               }
           }
-      , UserSecret = { Type = UserSecret, default = { key = None Text } }
-      , Gerrit = { Type = Gerrit }
-      , GitHub = { Type = GitHub }
-      , Mqtt = { Type = Mqtt }
-      , Git = { Type = Git }
+      , UserSecret = { Type = UserSecret, default.key = None Text }
+      , Gerrit.Type = Gerrit
+      , GitHub.Type = GitHub
+      , Mqtt.Type = Mqtt
+      , Git.Type = Git
       }
 
 let Input =
