@@ -12,6 +12,14 @@ The resources expect secrets to be created by the zuul ansible role:
   * `client.pem`
   * `client.key`
 
+* `${name}-registry-tls` with:
+
+  * `cert.pem`
+  * `cert.key`
+  * `secret` a password
+  * `username` the user name with write access
+  * `password` the user password
+
 * `${name}-database-password` with a `password` key, (unless an input.database db uri is provided).
 -}
 let Prelude = ../Prelude.dhall
@@ -71,6 +79,11 @@ let {- The Kubernetes resources of a Component
           , StatefulSet = None Kubernetes.StatefulSet.Type
           }
       }
+
+let DefaultNat =
+          \(value : Optional Natural)
+      ->  \(default : Natural)
+      ->  merge { None = default, Some = \(some : Natural) -> some } value
 
 let DefaultText =
           \(value : Optional Text)
@@ -568,6 +581,38 @@ in      \(input : Input)
                 [ { path = "zuul.conf", content = mkZuulConf input zk-hosts } ]
               }
 
+        let etc-zuul-registry =
+              Volume::{
+              , name = input.name ++ "-secret-registry"
+              , dir = "/etc/zuul"
+              , files =
+                [ { path = "registry.yaml"
+                  , content =
+                      let public-url =
+                            DefaultText
+                              input.registry.public-url
+                              "https://registry:9000"
+
+                      in  ''
+                          registry:
+                            address: '0.0.0.0'
+                            port: 9000
+                            public-url: ${public-url}
+                            tls-cert: /etc/zuul-registry/cert.pem
+                            tls-key: /etc/zuul-registry/cert.key
+                            secret: "%(ZUUL_REGISTRY_secret)"
+                            storage:
+                              driver: filesystem
+                              root: /var/lib/zuul
+                            users:
+                              - name: "%(ZUUL_REGISTRY_username)"
+                                pass: "%(ZUUL_REGISTRY_password)"
+                                access: write
+                          ''
+                  }
+                ]
+              }
+
         let etc-nodepool =
               Volume::{
               , name = input.name ++ "-secret-nodepool"
@@ -876,6 +921,72 @@ in      \(input : Input)
                                 }
                             )
                         }
+                      , Registry =
+                          let registry-volumes =
+                                [ etc-zuul-registry
+                                , Volume::{
+                                  , name = input.name ++ "-registry-tls"
+                                  , dir = "/etc/zuul-registry"
+                                  }
+                                ]
+
+                          let registry-env =
+                                mkEnvVarSecret
+                                  ( Prelude.List.map
+                                      Text
+                                      EnvSecret
+                                      (     \(key : Text)
+                                        ->  { name = "ZUUL_REGISTRY_${key}"
+                                            , key = key
+                                            , secret =
+                                                input.name ++ "-registry-tls"
+                                            }
+                                      )
+                                      [ "secret", "username", "password" ]
+                                  )
+
+                          in  KubernetesComponent::{
+                              , Service = Some
+                                  (mkService "registry" "registry" 9000)
+                              , StatefulSet = Some
+                                  ( mkStatefulSet
+                                      Component::{
+                                      , name = "registry"
+                                      , count =
+                                          DefaultNat input.registry.count 0
+                                      , data-dir = zuul-data-dir
+                                      , volumes = registry-volumes
+                                      , claim-size =
+                                          DefaultNat
+                                            input.registry.storage-size
+                                            20
+                                      , container = Kubernetes.Container::{
+                                        , name = "registry"
+                                        , image = zuul-image "registry"
+                                        , args = Some
+                                          [ "zuul-registry"
+                                          , "-c"
+                                          , "/etc/zuul/registry.yaml"
+                                          , "serve"
+                                          ]
+                                        , imagePullPolicy = Some "IfNotPresent"
+                                        , ports = Some
+                                          [ Kubernetes.ContainerPort::{
+                                            , name = Some "registry"
+                                            , containerPort = 9000
+                                            }
+                                          ]
+                                        , env = Some registry-env
+                                        , volumeMounts = Some
+                                            ( mkVolumeMount
+                                                (   registry-volumes
+                                                  # zuul-data-dir
+                                                )
+                                            )
+                                        }
+                                      }
+                                  )
+                              }
                       }
               , Nodepool =
                   let nodepool-image =
@@ -1008,13 +1119,17 @@ in      \(input : Input)
                 { apiVersion = "v1"
                 , kind = "List"
                 , items =
-                      [ mkSecret etc-zuul, mkSecret etc-nodepool ]
+                      [ mkSecret etc-zuul
+                      , mkSecret etc-nodepool
+                      , mkSecret etc-zuul-registry
+                      ]
                     # mkUnion Components.Backend.Database
                     # mkUnion Components.Backend.ZooKeeper
                     # mkUnion Components.Zuul.Scheduler
                     # mkUnion Components.Zuul.Executor
                     # mkUnion Components.Zuul.Web
                     # mkUnion Components.Zuul.Merger
+                    # mkUnion Components.Zuul.Registry
                     # mkUnion Components.Nodepool.Launcher
                 }
             }

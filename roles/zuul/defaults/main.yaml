@@ -10,4 +10,5 @@ raw_spec: "{{ vars['_operator_zuul-ci_org_zuul_spec'] | default(spec) }}"
 # Provide sensible default for non optional attributes:
 spec_defaults:
   web: {}
+  registry: {}
   externalConfig: {}

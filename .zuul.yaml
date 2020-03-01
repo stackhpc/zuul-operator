@@ -28,6 +28,7 @@
     allowed-projects: zuul/zuul-operator
     requires:
       - zuul-container-image
+      - zuul-registry-container-image
       - nodepool-container-image
     provides:
       - zuul-operator-container-image

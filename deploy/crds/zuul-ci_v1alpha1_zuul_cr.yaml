@@ -12,6 +12,8 @@ spec:
   scheduler:
     config:
       secretName: zuul-yaml-conf
+  registry:
+    count: 1
   launcher:
     config:
       secretName: nodepool-yaml-conf

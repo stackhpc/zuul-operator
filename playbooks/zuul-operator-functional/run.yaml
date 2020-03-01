@@ -132,6 +132,8 @@
             kubernetes:
               secretName: nodepool-kube-config
               key: kube.config
+          registry:
+            count: 1
 
     - name: Wait maximum 4 minutes for the scheduler deployment
       shell: |
@@ -164,3 +166,27 @@
     - name: Wait an extra 2 minutes for the services to settle
       pause:
         minutes: 2
+
+    - name: Test the registry
+      block:
+        - name: Get registry service ip
+          command: kubectl get svc registry -o "jsonpath={.spec.clusterIP}"
+          register: _registry_ip
+
+        - name: Add registry to /etc/hosts
+          become: yes
+          lineinfile:
+            path: /etc/hosts
+            regexp: "^.* registry$"
+            line: "{{ _registry_ip.stdout_lines[0] }} registry"
+
+        - name: Get registry password
+          command: kubectl get secret zuul-registry-tls -o "jsonpath={.data.password}"
+          register: _registry_password
+
+        - name: Test registry login
+          command: >
+            podman login
+              --tls-verify=false registry:9000
+              -u zuul
+              -p "{{ _registry_password.stdout_lines[0] | b64decode }}"

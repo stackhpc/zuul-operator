@@ -83,6 +83,20 @@ let Schemas =
               }
           , default = { image = None Text, count = None Natural }
           }
+      , Registry =
+          { Type =
+              { image : Optional Text
+              , count : Optional Natural
+              , storage-size : Optional Natural
+              , public-url : Optional Text
+              }
+          , default =
+              { image = None Text
+              , count = None Natural
+              , storage-size = None Natural
+              , public-url = None Text
+              }
+          }
       , Launcher =
           { Type = { image : Optional Text, config : UserSecret }
           , default.image = None Text
@@ -128,6 +142,7 @@ let Input =
           , executor : Schemas.Executor.Type
           , web : Schemas.Web.Type
           , scheduler : Schemas.Scheduler.Type
+          , registry : Schemas.Registry.Type
           , launcher : Schemas.Launcher.Type
           , database : Optional UserSecret
           , zookeeper : Optional UserSecret
@@ -142,6 +157,7 @@ let Input =
           , merger = Schemas.Merger.default
           , web = Schemas.Web.default
           , scheduler = Schemas.Scheduler.default
+          , registry = Schemas.Registry.default
           , executor = Schemas.Executor.default
           , launcher = Schemas.Launcher.default
           , connections = Schemas.Connections.default

@@ -1,0 +1,29 @@
+- name: Check if registry tls cert exists
+  set_fact:
+    registry_certs: "{{ lookup('k8s', api_version='v1', kind='Secret', namespace=namespace, resource_name=zuul_name + '-registry-tls') }}"
+
+- name: Generate and store certs
+  when: registry_certs.data is not defined
+  block:
+    - name: Generate certs
+      command: "{{ item }}"
+      loop:
+        # Server
+        - "openssl req -new -newkey rsa:2048 -nodes -keyout registry-{{ zuul_name }}.key -out registry-{{ zuul_name }}.csr -subj '/C=US/ST=Texas/L=Austin/O=Zuul/CN=server-{{ zuul_name }}'"
+        - "openssl x509 -req -days 3650 -in registry-{{ zuul_name }}.csr -out registry-{{ zuul_name }}.pem -CA ca-{{ zuul_name }}.pem -CAkey ca-{{ zuul_name }}.key -CAcreateserial"
+
+    - name: Create k8s secret
+      k8s:
+        state: "{{ state }}"
+        namespace: "{{ namespace }}"
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: "{{ zuul_name }}-registry-tls"
+          stringData:
+            username: "zuul"
+            password: "{{ lookup('password', '/dev/null') }}"
+            secret:   "{{ lookup('password', '/dev/null') }}"
+            cert.key: "{{ lookup('file', 'registry-' + zuul_name + '.key') }}"
+            cert.pem: "{{ lookup('file', 'registry-' + zuul_name + '.pem') }}"
