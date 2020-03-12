@@ -12,8 +12,13 @@ The resources expect secrets to be created by the zuul ansible role:
   * `client.pem`
   * `client.key`
 
-* `${name}-registry-tls` with:
+* `${name}-zookeeper-tls` with:
+  * `ca.crt`
+  * `tls.crt`
+  * `tls.key`
+  * `zk.pem` the keystore
 
+* `${name}-registry-tls` with:
   * `cert.pem`
   * `cert.key`
   * `secret` a password
@@ -277,7 +282,7 @@ let {- This method renders the zuul.conf
                   ssl_key=/etc/zuul-gearman/server.key
 
                   [zookeeper]
-                  hosts=${zk-hosts}
+                  ${zk-hosts}
 
                   [merger]
                   git_user_email=${merger-email}
@@ -311,9 +316,30 @@ let {- This method renders the zuul.conf
 let mkNodepoolConf =
           \(zk-host : Text)
       ->  ''
-          zookeeper-servers:
-            - host: ${zk-host}
-              port: 2181
+          ${zk-host}
+          ''
+
+let {- This method renders the zoo.cfg
+    -} mkZookeeperConf =
+          \(keystore-password : Text)
+      ->  ''
+          dataDir=/data
+          dataLogDir=/datalog
+          tickTime=2000
+          initLimit=5
+          syncLimit=2
+          autopurge.snapRetainCount=3
+          autopurge.purgeInterval=0
+          maxClientCnxns=60
+          standaloneEnabled=true
+          admin.enableServer=true
+          server.1=0.0.0.0:2888:3888
+
+          # TLS configuration
+          secureClientPort=2281
+          serverCnxnFactory=org.apache.zookeeper.server.NettyServerCnxnFactory
+          ssl.keyStore.location=/conf/zk.pem
+          ssl.trustStore.location=/conf/ca.pem
           ''
 
 in      \(input : Input)
@@ -518,14 +544,74 @@ in      \(input : Input)
                         )
                     }
 
-        let zk-hosts =
+        let {- TODO: generate random password -} default-zk-keystorepassword =
+              "keystorepassword"
+
+        let zk-conf =
               merge
-                { None = "zk"
-                , Some = \(some : UserSecret) -> "%(ZUUL_ZK_HOSTS)"
+                { None =
+                  [ Volume::{
+                    , name = "${input.name}-secret-zk"
+                    , dir = "/conf-tls"
+                    , files =
+                      [ { path = "zoo.cfg"
+                        , content = mkZookeeperConf default-zk-keystorepassword
+                        }
+                      ]
+                    }
+                  ]
+                , Some = \(some : UserSecret) -> [] : List Volume.Type
                 }
                 input.zookeeper
 
-        let zk-hosts-secret-env =
+        let zk-client-conf =
+              merge
+                { None =
+                  [ Volume::{
+                    , name = "${input.name}-zookeeper-tls"
+                    , dir = "/etc/zookeeper-tls"
+                    }
+                  ]
+                , Some = \(some : UserSecret) -> [] : List Volume.Type
+                }
+                input.zookeeper
+
+        let zk-hosts-zuul =
+              merge
+                { None =
+                    ''
+                    hosts=zk:2281
+                    tls_cert=/etc/zookeeper-tls/tls.crt
+                    tls_key=/etc/zookeeper-tls/tls.key
+                    tls_ca=/etc/zookeeper-tls/ca.crt
+                    ''
+                , Some = \(some : UserSecret) -> "hosts=%(ZUUL_ZK_HOSTS)"
+                }
+                input.zookeeper
+
+        let zk-hosts-nodepool =
+              merge
+                { None =
+                    ''
+                    zookeeper-servers:
+                      - host: zk
+                        port: 2281
+                    zookeeper-tls:
+                        cert: /etc/zookeeper-tls/tls.crt
+                        key: /etc/zookeeper-tls/tls.key
+                        ca: /etc/zookeeper-tls/ca.crt
+                    ''
+                , Some =
+                        \(some : UserSecret)
+                    ->  ''
+                        zookeeper-servers:
+                          - hosts: %(ZUUL_ZK_HOSTS)"
+                        ''
+                }
+                input.zookeeper
+
+        let {- Add support for TLS protected external zookeeper service
+            -} zk-hosts-secret-env =
               merge
                 { None = [] : List Kubernetes.EnvVar.Type
                 , Some =
@@ -562,9 +648,8 @@ in      \(input : Input)
                 [ { path = "nodepool.yaml"
                   , content =
                       ''
-                      zookeeper-servers:
-                        - host: ${zk-hosts}
-                          port: 2181
+                      ${zk-hosts-nodepool}
+
                       webapp:
                         port: 5000
 
@@ -578,7 +663,10 @@ in      \(input : Input)
               , name = input.name ++ "-secret-zuul"
               , dir = "/etc/zuul"
               , files =
-                [ { path = "zuul.conf", content = mkZuulConf input zk-hosts } ]
+                [ { path = "zuul.conf"
+                  , content = mkZuulConf input zk-hosts-zuul
+                  }
+                ]
               }
 
         let etc-zuul-registry =
@@ -618,7 +706,9 @@ in      \(input : Input)
               , name = input.name ++ "-secret-nodepool"
               , dir = "/etc/nodepool"
               , files =
-                [ { path = "nodepool.yaml", content = mkNodepoolConf zk-hosts }
+                [ { path = "nodepool.yaml"
+                  , content = mkNodepoolConf zk-hosts-nodepool
+                  }
                 ]
               }
 
@@ -685,27 +775,42 @@ in      \(input : Input)
                       , ZooKeeper =
                           merge
                             { None = KubernetesComponent::{
-                              , Service = Some (mkService "zk" "zk" 2181)
+                              , Service = Some (mkService "zk" "zk" 2281)
                               , StatefulSet = Some
                                   ( mkStatefulSet
                                       Component::{
                                       , name = "zk"
                                       , count = 1
                                       , data-dir = zk-volumes
+                                      , volumes = zk-conf # zk-client-conf
                                       , claim-size = 1
                                       , container = Kubernetes.Container::{
                                         , name = "zk"
+                                        , command = Some
+                                          [ "sh"
+                                          , "-c"
+                                          ,     "cp /conf-tls/zoo.cfg /conf/ && "
+                                            ++  "cp /etc/zookeeper-tls/zk.pem /conf/zk.pem && "
+                                            ++  "cp /etc/zookeeper-tls/ca.crt /conf/ca.pem && "
+                                            ++  "chown zookeeper /conf/zoo.cfg /conf/zk.pem /conf/ca.pem && "
+                                            ++  "exec /docker-entrypoint.sh zkServer.sh start-foreground"
+                                          ]
                                         , image = Some
                                             "docker.io/library/zookeeper"
                                         , imagePullPolicy = Some "IfNotPresent"
                                         , ports = Some
                                           [ Kubernetes.ContainerPort::{
                                             , name = Some "zk"
-                                            , containerPort = 2181
+                                            , containerPort = 2281
                                             }
                                           ]
                                         , volumeMounts = Some
-                                            (mkVolumeMount zk-volumes)
+                                            ( mkVolumeMount
+                                                (   zk-volumes
+                                                  # zk-conf
+                                                  # zk-client-conf
+                                                )
+                                            )
                                         }
                                       }
                                   )
@@ -763,7 +868,8 @@ in      \(input : Input)
                         , dir = "/etc/zuul-executor"
                         }
 
-                  let zuul-volumes = [ etc-zuul, gearman-config ]
+                  let zuul-volumes =
+                        [ etc-zuul, gearman-config ] # zk-client-conf
 
                   let web-volumes = zuul-volumes
 
@@ -1052,6 +1158,7 @@ in      \(input : Input)
                           [ etc-nodepool, nodepool-config ]
                         # openstack-config
                         # kubernetes-config
+                        # zk-client-conf
 
                   let shard-config =
                         "cat /etc/nodepool/nodepool.yaml /etc/nodepool-config/*.yaml > /var/lib/nodepool/config.yaml; "
@@ -1119,10 +1226,13 @@ in      \(input : Input)
                 { apiVersion = "v1"
                 , kind = "List"
                 , items =
-                      [ mkSecret etc-zuul
-                      , mkSecret etc-nodepool
-                      , mkSecret etc-zuul-registry
-                      ]
+                      Prelude.List.map
+                        Volume.Type
+                        Kubernetes.Resource
+                        mkSecret
+                        (   zk-conf
+                          # [ etc-zuul, etc-nodepool, etc-zuul-registry ]
+                        )
                     # mkUnion Components.Backend.Database
                     # mkUnion Components.Backend.ZooKeeper
                     # mkUnion Components.Zuul.Scheduler

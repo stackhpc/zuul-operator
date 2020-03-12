@@ -5,6 +5,11 @@
     - zuul-ensure-gearman-tls
 
 - include_role:
+    name: zuul-ensure-zookeeper-tls
+  # when the user does not provide a zookeeper
+  when: raw_spec['zookeeper'] is not defined
+
+- include_role:
     name: zuul-ensure-registry-tls
   when: (raw_spec['registry']['count'] | default(0)) | int > 0
 
