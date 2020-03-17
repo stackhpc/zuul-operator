@@ -4,7 +4,6 @@
     abstract: true
     run: playbooks/zuul-operator-functional/run.yaml
     post-run: playbooks/zuul-operator-functional/post.yaml
-    requires: docker-image
     vars:
       # We disable userland-proxy to enable scheduler deployement to connect to the gearman service
       # see: https://github.com/eclipse/che/issues/8134
@@ -24,6 +23,11 @@
     name: zuul-operator-build-image
     parent: opendev-build-docker-image
     allowed-projects: zuul/zuul-operator
+    requires:
+      - zuul-container-image
+      - nodepool-container-image
+    provides:
+      - zuul-operator-container-image
     vars: &image_vars
       zuul_work_dir: "{{ zuul.projects['opendev.org/zuul/zuul-operator'].src_dir }}"
       docker_images:
