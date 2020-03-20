@@ -2,7 +2,9 @@
     description: Operator integration tests
     name: zuul-operator-functional
     abstract: true
-    run: playbooks/zuul-operator-functional/run.yaml
+    run:
+      - playbooks/zuul-operator-functional/run.yaml
+      - playbooks/zuul-operator-functional/test.yaml
     post-run: playbooks/zuul-operator-functional/post.yaml
     requires: docker-image
     vars:

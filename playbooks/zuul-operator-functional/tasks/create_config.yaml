@@ -1,0 +1,52 @@
+- name: create config directory
+  become: yes
+  file:
+    path: /srv/git/config/
+    state: directory
+    mode: 0777
+
+- name: copy config content
+  copy:
+    dest: "/srv/git/config/{{ item.name }}"
+    content: "{{ item.content }}"
+  loop:
+    - name: zuul.yaml
+      content: |
+        - pipeline:
+            name: periodic
+            manager: independent
+            trigger:
+              timer:
+                - time: '* * * * * *'
+            success:
+              sql:
+            failure:
+              sql:
+
+        - nodeset:
+            name: localhost
+            nodes: []
+
+        - job:
+            name: test-job
+            run: test.yaml
+            nodeset: localhost
+
+        - project:
+            periodic:
+              jobs:
+                - test-job
+
+    - name: test.yaml
+      content: |
+        - hosts: localhost
+          tasks:
+            - debug: msg='Demo job is running'
+            - pause: seconds=30
+
+- name: commit config
+  shell: |
+    cd /srv/git/config/
+    test -d .git || git init .
+    git add *.yaml
+    git commit -m 'Setup config project' || true

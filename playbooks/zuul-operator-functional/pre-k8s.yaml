@@ -12,3 +12,6 @@
           - '8.8.8.8'
     - role: use-buildset-registry
       buildset_registry_docker_user: root
+  post_tasks:
+    - name: check kubernetes connection
+      command: kubectl get pods
