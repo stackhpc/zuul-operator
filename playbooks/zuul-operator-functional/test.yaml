@@ -62,32 +62,28 @@
                 name: "zuul-yaml-conf"
               stringData:
                 main.yaml: "{{ tenants | to_yaml }}"
-        - k8s:
-            namespace: default
-            definition:
-              apiVersion: operator.zuul-ci.org/v1alpha1
-              kind: Zuul
-              metadata:
-                name: zuul
-              spec:
-                executor:
-                  count: 1
-                  ssh_key:
-                    secretName: executor-ssh-key
-                merger:
-                  count: 1
-                scheduler:
-                  config:
-                    secretName: zuul-yaml-conf
-                launcher:
-                  config:
-                    secretName: nodepool-yaml-conf
-                connections:
-                  gits:
-                    - baseurl: https://opendev.org
-                      name: opendev.org
-                    - baseurl: "git://{{ ansible_all_ipv4_addresses[0] }}/"
-                      name: local-git
+
+        - include_tasks: tasks/apply_cr.yaml
+          vars:
+            spec:
+              executor:
+                count: 1
+                ssh_key:
+                  secretName: executor-ssh-key
+              merger:
+                count: 1
+              scheduler:
+                config:
+                  secretName: zuul-yaml-conf
+              launcher:
+                config:
+                  secretName: nodepool-yaml-conf
+              connections:
+                gits:
+                  - baseurl: https://opendev.org
+                    name: opendev.org
+                  - baseurl: "git://{{ ansible_all_ipv4_addresses[0] }}/"
+                    name: local-git
 
     - name: ensure a job is running
       when: skip_check is not defined

@@ -1,0 +1,9 @@
+# A local vars file to run the zuul jobs locally:
+# ansible-playbook -i playbooks/files/hosts.yaml -e @playbooks/files/local-vars.yaml -v playbooks/zuul-operator-functional/run.yaml -e use_local_role=true
+---
+namespace: default
+zuul_app_path: "/home/fedora/src/opendev.org/zuul/zuul-operator/conf/zuul"
+zuul:
+  projects:
+    'opendev.org/zuul/zuul-operator':
+      src_dir: "{{ ansible_user_dir|default(ansible_env.HOME) }}/src/opendev.org/zuul/zuul-operator"

@@ -1,0 +1,16 @@
+---
+- name: Apply Zuul CR
+  when: use_local_role is not defined
+  k8s:
+    namespace: "{{ namespace }}"
+    definition:
+      apiVersion: operator.zuul-ci.org/v1alpha1
+      kind: Zuul
+      metadata:
+        name: zuul
+      spec: "{{ spec }}"
+
+- name: Run Zuul CR directly
+  when: use_local_role is defined
+  include_role:
+    name: zuul
