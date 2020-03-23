@@ -131,6 +131,10 @@ let Input =
           , external_config = Schemas.ExternalConfigs.default
           , merger = Schemas.Merger.default
           , web = Schemas.Web.default
+          , scheduler = Schemas.Scheduler.default
+          , executor = Schemas.Executor.default
+          , launcher = Schemas.Launcher.default
+          , connections = Schemas.Connections.default
           }
       }
 
