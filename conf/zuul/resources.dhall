@@ -631,16 +631,15 @@ in      \(input : Input)
                         , dir = "/etc/zuul-executor"
                         }
 
-                  let conn-keys = [ gearman-config ]
+                  let zuul-volumes = [ etc-zuul, gearman-config ]
 
-                  let web-volumes = [ etc-zuul ]
+                  let web-volumes = zuul-volumes
 
-                  let merger-volumes = [ etc-zuul ]
+                  let merger-volumes = zuul-volumes
 
-                  let scheduler-volumes = [ etc-zuul, sched-config ] # conn-keys
+                  let scheduler-volumes = zuul-volumes # [ sched-config ]
 
-                  let executor-volumes =
-                        [ etc-zuul, executor-ssh-key ] # conn-keys
+                  let executor-volumes = zuul-volumes # [ executor-ssh-key ]
 
                   in  { Scheduler = KubernetesComponent::{
                         , Service = Some (mkService "scheduler" "gearman" 4730)
