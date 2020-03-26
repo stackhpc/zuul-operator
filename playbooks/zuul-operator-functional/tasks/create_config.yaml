@@ -24,13 +24,19 @@
               sql:
 
         - nodeset:
-            name: localhost
-            nodes: []
+            name: pod-fedora
+            nodes:
+              - name: container
+                label: pod-fedora-31
 
         - job:
             name: test-job
             run: test.yaml
-            nodeset: localhost
+            # skip zuul-base-jobs for now as it doesn't work with kubectl
+            roles:
+              - zuul: zuul/zuul-jobs
+            parent: null
+            nodeset: pod-fedora
 
         - project:
             periodic:
@@ -41,6 +47,8 @@
       content: |
         - hosts: localhost
           tasks:
+            - include_role:
+                name: start-zuul-console
             - debug: msg='Demo job is running'
             - pause: seconds=30
 
