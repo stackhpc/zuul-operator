@@ -238,6 +238,14 @@ let {- This method renders the zuul.conf
               ++  githubs-conf
               ++  mqtts-conf
 
+let mkNodepoolConf =
+          \(zk-host : Text)
+      ->  ''
+          zookeeper-servers:
+            - host: ${zk-host}
+              port: 2181
+          ''
+
 in      \(input : Input)
     ->  let app-labels =
               [ { mapKey = "app.kubernetes.io/name", mapValue = input.name }
@@ -494,6 +502,15 @@ in      \(input : Input)
                 [ { path = "zuul.conf"
                   , content = mkZuulConf input zk-hosts default-db-password
                   }
+                ]
+              }
+
+        let etc-nodepool =
+              Volume::{
+              , name = input.name ++ "-secret-nodepool"
+              , dir = "/etc/nodepool"
+              , files =
+                [ { path = "nodepool.yaml", content = mkNodepoolConf zk-hosts }
                 ]
               }
 
@@ -756,6 +773,54 @@ in      \(input : Input)
                             )
                         }
                       }
+              , Nodepool =
+                  let nodepool-image =
+                        \(name : Text) -> Some (image ("nodepool-" ++ name))
+
+                  let nodepool-data-dir =
+                        [ Volume::{
+                          , name = "nodepool-data"
+                          , dir = "/var/lib/nodepool"
+                          }
+                        ]
+
+                  let nodepool-config =
+                        Volume::{
+                        , name = input.launcher.config.secretName
+                        , dir = "/etc/nodepool-config"
+                        }
+
+                  let nodepool-volumes = [ etc-nodepool, nodepool-config ]
+
+                  let shard-config =
+                        "cat /etc/nodepool/nodepool.yaml /etc/nodepool-config/*.yaml > /var/lib/nodepool/config.yaml; "
+
+                  in  { Launcher = KubernetesComponent::{
+                        , Deployment = Some
+                            ( mkDeployment
+                                Component::{
+                                , name = "launcher"
+                                , count = 1
+                                , data-dir = nodepool-data-dir
+                                , volumes = nodepool-volumes
+                                , container = Kubernetes.Container::{
+                                  , name = "launcher"
+                                  , image = nodepool-image "launcher"
+                                  , args =
+                                    [ "sh"
+                                    , "-c"
+                                    ,     shard-config
+                                      ++  "nodepool-launcher -d -c /var/lib/nodepool/config.yaml"
+                                    ]
+                                  , imagePullPolicy = Some "IfNotPresent"
+                                  , volumeMounts =
+                                      mkVolumeMount
+                                        (nodepool-volumes # nodepool-data-dir)
+                                  }
+                                }
+                            )
+                        }
+                      }
               }
 
         let {- This function transforms the different types into the Kubernetes.Resource
@@ -798,5 +863,6 @@ in      \(input : Input)
                     # mkUnion Components.Zuul.Executor
                     # mkUnion Components.Zuul.Web
                     # mkUnion Components.Zuul.Merger
+                    # mkUnion Components.Nodepool.Launcher
                 }
             }
