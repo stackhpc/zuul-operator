@@ -12,11 +12,11 @@
   vars:
     services:
         - kind: StatefulSet
-          name: "{{ zuul_name }}-scheduler"
-        - kind: StatefulSet
           name: "{{ zuul_name }}-executor"
         - kind: Deployment
           name: "{{ zuul_name }}-web"
+        - kind: StatefulSet
+          name: "{{ zuul_name }}-scheduler"
     extra_services:
         - kind: Deployment
           name: "{{ zuul_name }}-merger"
@@ -42,7 +42,7 @@
               metadata:
                 labels:
                   version: "{{ new_zuul_conf }}"
-      loop: "{% if merger.count is defined and merger.count > 0 %}{{ services | union(extra_services) }}{% else %}{{ services }}{% endif %}"
+      loop: "{% if merger.count is defined and merger.count > 0 %}{{ extra_services | union(services) }}{% else %}{{ services }}{% endif %}"
 
     - name: Reload pipeline queues
       load_zuul_changes:
