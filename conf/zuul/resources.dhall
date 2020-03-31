@@ -307,6 +307,7 @@ in      \(input : Input)
                       , name = volume.name
                       , secret = Some Kubernetes.SecretVolumeSource::{
                         , secretName = Some volume.name
+                        , defaultMode = Some 256
                         }
                       }
                 )
