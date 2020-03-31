@@ -1,0 +1,132 @@
+- name: run functional tst
+  hosts: all
+  pre_tasks:
+    - name: install git
+      become: yes
+      package:
+        name:
+          - git
+          - jq
+
+    - name: install websocket client
+      become: yes
+      command: python3 -m pip install websocket-client
+
+  tasks:
+    - name: get rest api url
+      command: kubectl get svc web -o jsonpath='{.spec.clusterIP}'
+      register: zuul_web_ip
+
+    - name: set fact zuul_web_url
+      set_fact:
+        zuul_web_url: "http://{{ zuul_web_ip.stdout_lines[0] }}:9000"
+        zuul_ws_url: "ws://{{ zuul_web_ip.stdout_lines[0] }}:9000"
+
+    - name: ensure zuul web api is working
+      when: skip_check is not defined
+      include_tasks: tasks/zuul_web_check.yaml
+      vars:
+        endpoint: "/api/tenants"
+        expected:
+          - name: local
+            projects: 1
+            queue: 0
+
+    - name: setup git service
+      include_tasks: tasks/git_setup.yaml
+
+    - name: create a config project
+      include_tasks: tasks/create_config.yaml
+
+    - name: update kubernetes resources
+      vars:
+        tenants:
+          - tenant:
+              name: local
+              source:
+                opendev.org:
+                  config-projects:
+                    - zuul/zuul-base-jobs
+                  untrusted-projects:
+                    - zuul/zuul-jobs
+                local-git:
+                  config-projects:
+                    - config
+      block:
+        - k8s:
+            namespace: default
+            definition:
+              apiVersion: v1
+              kind: Secret
+              metadata:
+                name: "zuul-yaml-conf"
+              stringData:
+                main.yaml: "{{ tenants | to_yaml }}"
+        - k8s:
+            namespace: default
+            definition:
+              apiVersion: operator.zuul-ci.org/v1alpha1
+              kind: Zuul
+              metadata:
+                name: zuul
+              spec:
+                executor:
+                  count: 1
+                  ssh_key:
+                    secretName: executor-ssh-key
+                merger:
+                  count: 1
+                scheduler:
+                  config:
+                    secretName: zuul-yaml-conf
+                launcher:
+                  config:
+                    secretName: nodepool-yaml-conf
+                connections:
+                  gits:
+                    - baseurl: https://opendev.org
+                      name: opendev.org
+                    - baseurl: "git://{{ ansible_all_ipv4_addresses[0] }}/"
+                      name: local-git
+
+    - name: ensure a job is running
+      when: skip_check is not defined
+      include_tasks: tasks/zuul_web_check.yaml
+      vars:
+        endpoint: "/api/tenants"
+        expected:
+          - name: local
+            projects: 1
+            # 1 queue means a job is running
+            queue: 1
+
+    - name: get buillds results
+      include_tasks: tasks/zuul_web_check.yaml
+      vars:
+        endpoint: "/api/tenant/local/builds"
+
+    - name: ensure success build
+      assert:
+        that:
+          - result.json[0].result == 'SUCCESS'
+
+    - name: grab job uuid
+      shell: |
+        curl -s {{ zuul_web_url }}/api/tenant/local/status | jq -r '.pipelines[].change_queues[].heads[][].jobs[].uuid'
+      register: _job_uuid
+
+    - name: connect to console-stream
+      command: |
+        wsdump.py -r --eof-wait 5 -t '{"uuid":"{{ _job_uuid.stdout_lines[0] }}","logfile":"console.log"}' {{ zuul_ws_url }}/api/tenant/local/console-stream
+      register: console_stream
+
+    - name: show console stream
+      debug:
+        var: console_stream
+
+    - name: fail if console stream does not contains expected job output
+      when: "'Job console starting...' not in console_stream.stdout"
+      # It seems like wsdump.py doesn't always stay connected for the whole job duration
+      # when: "'Demo job is running' not in console_stream.stdout"
+      fail:
+        msg: "Task output is missing from: {{ console_stream.stdout }}"

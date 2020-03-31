@@ -1,0 +1,7 @@
+- name: "check api {{ zuul_web_url }}{{ endpoint }}"
+  uri:
+    url: "{{ zuul_web_url }}{{ endpoint }}"
+  register: result
+  until: "result.json is defined and result.json{% if expected is defined %} and result.json == expected{% endif %}"
+  retries: 600
+  delay: 1
