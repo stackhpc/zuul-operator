@@ -23,7 +23,7 @@ from ansible.module_utils.basic import AnsibleModule  # type: ignore
 
 def run(expression: str) -> Any:
     proc = subprocess.Popen(
-        ['dhall-to-json', '--omit-empty', '--explain'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        ['dhall-to-json', '--explain'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = proc.communicate(expression.encode('utf-8'))
     if stderr:
         return dict(failed=True, msg=stderr.decode('utf-8'))

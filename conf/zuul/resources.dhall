@@ -264,11 +264,11 @@ in      \(input : Input)
         let mkObjectMeta =
                   \(name : Text)
               ->  \(labels : Labels)
-              ->  Kubernetes.ObjectMeta::{ name = name, labels = labels }
+              ->  Kubernetes.ObjectMeta::{ name = name, labels = Some labels }
 
         let mkSelector =
                   \(labels : Labels)
-              ->  Kubernetes.LabelSelector::{ matchLabels = labels }
+              ->  Kubernetes.LabelSelector::{ matchLabels = Some labels }
 
         let mkService =
                   \(name : Text)
@@ -280,8 +280,8 @@ in      \(input : Input)
                       , metadata = mkObjectMeta name labels
                       , spec = Some Kubernetes.ServiceSpec::{
                         , type = Some "ClusterIP"
-                        , selector = labels
-                        , ports =
+                        , selector = Some labels
+                        , ports = Some
                           [ Kubernetes.ServicePort::{
                             , name = Some port-name
                             , protocol = Some "TCP"
@@ -300,9 +300,7 @@ in      \(input : Input)
                 (     \(volume : Volume.Type)
                   ->  Kubernetes.Volume::{
                       , name = volume.name
-                      , emptyDir = Kubernetes.EmptyDirVolumeSource::{
-                        , medium = Some ""
-                        }
+                      , emptyDir = Some Kubernetes.EmptyDirVolumeSource::{=}
                       }
                 )
 
@@ -326,9 +324,10 @@ in      \(input : Input)
               ->  Kubernetes.PodTemplateSpec::{
                   , metadata = mkObjectMeta component.name labels
                   , spec = Some Kubernetes.PodSpec::{
-                    , volumes =
-                          mkVolumeSecret component.volumes
-                        # mkVolumeEmptyDir component.data-dir
+                    , volumes = Some
+                        (   mkVolumeSecret component.volumes
+                          # mkVolumeEmptyDir component.data-dir
+                        )
                     , containers = [ component.container ]
                     , automountServiceAccountToken = Some False
                     }
@@ -351,14 +350,16 @@ in      \(input : Input)
                                 , metadata =
                                     mkObjectMeta component-name ([] : Labels)
                                 , spec = Some Kubernetes.PersistentVolumeClaimSpec::{
-                                  , accessModes = [ "ReadWriteOnce" ]
+                                  , accessModes = Some [ "ReadWriteOnce" ]
                                   , resources = Some Kubernetes.ResourceRequirements::{
-                                    , requests = toMap
-                                        { storage =
-                                                Natural/show
-                                                  component.claim-size
-                                            ++  "Gi"
-                                        }
+                                    , requests = Some
+                                        ( toMap
+                                            { storage =
+                                                    Natural/show
+                                                      component.claim-size
+                                                ++  "Gi"
+                                            }
+                                        )
                                     }
                                   }
                                 }
@@ -371,7 +372,7 @@ in      \(input : Input)
                         , replicas = Some component.count
                         , selector = mkSelector labels
                         , template = mkPodTemplateSpec component labels
-                        , volumeClaimTemplates = claim
+                        , volumeClaimTemplates = Some claim
                         }
                       }
 
@@ -408,7 +409,7 @@ in      \(input : Input)
                 (     \(env : EnvSecret)
                   ->  Kubernetes.EnvVar::{
                       , name = env.name
-                      , valueFrom = Kubernetes.EnvVarSource::{
+                      , valueFrom = Some Kubernetes.EnvVarSource::{
                         , secretKeyRef = Some Kubernetes.SecretKeySelector::{
                           , key = env.key
                           , name = Some env.secret
@@ -433,16 +434,17 @@ in      \(input : Input)
               ->  Kubernetes.Resource.Secret
                     Kubernetes.Secret::{
                     , metadata = Kubernetes.ObjectMeta::{ name = volume.name }
-                    , stringData =
-                        Prelude.List.map
-                          File
-                          { mapKey : Text, mapValue : Text }
-                          (     \(config : File)
-                            ->  { mapKey = config.path
-                                , mapValue = config.content
-                                }
-                          )
-                          volume.files
+                    , stringData = Some
+                        ( Prelude.List.map
+                            File
+                            { mapKey : Text, mapValue : Text }
+                            (     \(config : File)
+                              ->  { mapKey = config.path
+                                  , mapValue = config.content
+                                  }
+                            )
+                            volume.files
+                        )
                     }
 
         let zk-hosts =
@@ -546,23 +548,25 @@ in      \(input : Input)
                                         , image = Some
                                             "docker.io/library/postgres:12.1"
                                         , imagePullPolicy = Some "IfNotPresent"
-                                        , ports =
+                                        , ports = Some
                                           [ Kubernetes.ContainerPort::{
                                             , name = Some "pg"
                                             , containerPort = 5432
                                             }
                                           ]
-                                        , env =
-                                            mkEnvVarValue
-                                              ( toMap
-                                                  { POSTGRES_USER = "zuul"
-                                                  , POSTGRES_PASSWORD =
-                                                      default-db-password
-                                                  , PGDATA = "/var/lib/pg/data"
-                                                  }
-                                              )
-                                        , volumeMounts =
-                                            mkVolumeMount db-volumes
+                                        , env = Some
+                                            ( mkEnvVarValue
+                                                ( toMap
+                                                    { POSTGRES_USER = "zuul"
+                                                    , POSTGRES_PASSWORD =
+                                                        default-db-password
+                                                    , PGDATA =
+                                                        "/var/lib/pg/data"
+                                                    }
+                                                )
+                                            )
+                                        , volumeMounts = Some
+                                            (mkVolumeMount db-volumes)
                                         }
                                       }
                                   )
@@ -588,14 +592,14 @@ in      \(input : Input)
                                         , image = Some
                                             "docker.io/library/zookeeper"
                                         , imagePullPolicy = Some "IfNotPresent"
-                                        , ports =
+                                        , ports = Some
                                           [ Kubernetes.ContainerPort::{
                                             , name = Some "zk"
                                             , containerPort = 2181
                                             }
                                           ]
-                                        , volumeMounts =
-                                            mkVolumeMount zk-volumes
+                                        , volumeMounts = Some
+                                            (mkVolumeMount zk-volumes)
                                         }
                                       }
                                   )
@@ -672,21 +676,23 @@ in      \(input : Input)
                                 , container = Kubernetes.Container::{
                                   , name = "scheduler"
                                   , image = zuul-image "scheduler"
-                                  , args = [ "zuul-scheduler", "-d" ]
+                                  , args = Some [ "zuul-scheduler", "-d" ]
                                   , imagePullPolicy = Some "IfNotPresent"
-                                  , ports =
+                                  , ports = Some
                                     [ Kubernetes.ContainerPort::{
                                       , name = Some "gearman"
                                       , containerPort = 4730
                                       }
                                     ]
-                                  , env =
-                                        zuul-env
-                                      # db-uri-secret-env
-                                      # zk-hosts-secret-env
-                                  , volumeMounts =
-                                      mkVolumeMount
-                                        (scheduler-volumes # zuul-data-dir)
+                                  , env = Some
+                                      (   zuul-env
+                                        # db-uri-secret-env
+                                        # zk-hosts-secret-env
+                                      )
+                                  , volumeMounts = Some
+                                      ( mkVolumeMount
+                                          (scheduler-volumes # zuul-data-dir)
+                                      )
                                   }
                                 }
                             )
@@ -704,18 +710,19 @@ in      \(input : Input)
                                 , container = Kubernetes.Container::{
                                   , name = "executor"
                                   , image = zuul-image "executor"
-                                  , args = [ "zuul-executor", "-d" ]
+                                  , args = Some [ "zuul-executor", "-d" ]
                                   , imagePullPolicy = Some "IfNotPresent"
-                                  , ports =
+                                  , ports = Some
                                     [ Kubernetes.ContainerPort::{
                                       , name = Some "finger"
                                       , containerPort = 7900
                                       }
                                     ]
-                                  , env = zuul-env
-                                  , volumeMounts =
-                                      mkVolumeMount
-                                        (executor-volumes # zuul-data-dir)
+                                  , env = Some zuul-env
+                                  , volumeMounts = Some
+                                      ( mkVolumeMount
+                                          (executor-volumes # zuul-data-dir)
+                                      )
                                   , securityContext = Some Kubernetes.SecurityContext::{
                                     , privileged = Some True
                                     }
@@ -735,18 +742,19 @@ in      \(input : Input)
                                 , container = Kubernetes.Container::{
                                   , name = "web"
                                   , image = zuul-image "web"
-                                  , args = [ "zuul-web", "-d" ]
+                                  , args = Some [ "zuul-web", "-d" ]
                                   , imagePullPolicy = Some "IfNotPresent"
-                                  , ports =
+                                  , ports = Some
                                     [ Kubernetes.ContainerPort::{
                                       , name = Some "api"
                                       , containerPort = 9000
                                       }
                                     ]
-                                  , env = zuul-env
-                                  , volumeMounts =
-                                      mkVolumeMount
-                                        (web-volumes # zuul-data-dir)
+                                  , env = Some zuul-env
+                                  , volumeMounts = Some
+                                      ( mkVolumeMount
+                                          (web-volumes # zuul-data-dir)
+                                      )
                                   }
                                 }
                             )
@@ -762,12 +770,13 @@ in      \(input : Input)
                                 , container = Kubernetes.Container::{
                                   , name = "merger"
                                   , image = zuul-image "merger"
-                                  , args = [ "zuul-merger", "-d" ]
+                                  , args = Some [ "zuul-merger", "-d" ]
                                   , imagePullPolicy = Some "IfNotPresent"
-                                  , env = zuul-env
-                                  , volumeMounts =
-                                      mkVolumeMount
-                                        (merger-volumes # zuul-data-dir)
+                                  , env = Some zuul-env
+                                  , volumeMounts = Some
+                                      ( mkVolumeMount
+                                          (merger-volumes # zuul-data-dir)
+                                      )
                                   }
                                 }
                             )
@@ -852,17 +861,18 @@ in      \(input : Input)
                                 , container = Kubernetes.Container::{
                                   , name = "launcher"
                                   , image = nodepool-image "launcher"
-                                  , args =
+                                  , args = Some
                                     [ "sh"
                                     , "-c"
                                     ,     shard-config
                                       ++  "nodepool-launcher -d -c /var/lib/nodepool/config.yaml"
                                     ]
                                   , imagePullPolicy = Some "IfNotPresent"
-                                  , env = nodepool-env
-                                  , volumeMounts =
-                                      mkVolumeMount
-                                        (nodepool-volumes # nodepool-data-dir)
+                                  , env = Some nodepool-env
+                                  , volumeMounts = Some
+                                      ( mkVolumeMount
+                                          (nodepool-volumes # nodepool-data-dir)
+                                      )
                                   }
                                 }
                             )

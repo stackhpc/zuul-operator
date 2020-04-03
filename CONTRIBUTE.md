@@ -42,13 +42,13 @@ INPUT=$(yaml-to-dhall "(./conf/zuul/input.dhall).Input.Type" < playbooks/files/c
 Then you can evaluate the resources function, for example to get the scheduler service:
 
 ```bash
-dhall-to-yaml --omit-empty --explain <<< "(./conf/zuul/resources.dhall ($INPUT)).Components.Zuul.Scheduler"
+dhall-to-yaml --explain <<< "(./conf/zuul/resources.dhall ($INPUT)).Components.Zuul.Scheduler"
 ```
 
 Or get all the kubernetes resources:
 
 ```bash
-dhall-to-yaml --omit-empty <<< "(./conf/zuul/resources.dhall ($INPUT)).List"
+dhall-to-yaml <<< "(./conf/zuul/resources.dhall ($INPUT)).List"
 ```
 
 ## Run the ansible roles locally
