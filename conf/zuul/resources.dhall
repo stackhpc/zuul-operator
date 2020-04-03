@@ -790,7 +790,53 @@ in      \(input : Input)
                         , dir = "/etc/nodepool-config"
                         }
 
-                  let nodepool-volumes = [ etc-nodepool, nodepool-config ]
+                  let openstack-config =
+                        merge
+                          { None = [] : List Volume.Type
+                          , Some =
+                                  \(some : UserSecret)
+                              ->  [ Volume::{
+                                    , name = some.secretName
+                                    , dir = "/etc/nodepool-openstack"
+                                    }
+                                  ]
+                          }
+                          input.external_config.openstack
+
+                  let kubernetes-config =
+                        merge
+                          { None = [] : List Volume.Type
+                          , Some =
+                                  \(some : UserSecret)
+                              ->  [ Volume::{
+                                    , name = some.secretName
+                                    , dir = "/etc/nodepool-kubernetes"
+                                    }
+                                  ]
+                          }
+                          input.external_config.kubernetes
+
+                  let nodepool-env =
+                        mkEnvVarValue
+                          ( toMap
+                              { HOME = "/var/lib/nodepool"
+                              , OS_CLIENT_CONFIG_FILE =
+                                      "/etc/nodepool-openstack/"
+                                  ++  DefaultKey
+                                        input.external_config.openstack
+                                        "clouds.yaml"
+                              , KUBECONFIG =
+                                      "/etc/nodepool-kubernetes/"
+                                  ++  DefaultKey
+                                        input.external_config.kubernetes
+                                        "kube.config"
+                              }
+                          )
+
+                  let nodepool-volumes =
+                          [ etc-nodepool, nodepool-config ]
+                        # openstack-config
+                        # kubernetes-config
 
                   let shard-config =
                         "cat /etc/nodepool/nodepool.yaml /etc/nodepool-config/*.yaml > /var/lib/nodepool/config.yaml; "
@@ -813,6 +859,7 @@ in      \(input : Input)
                                       ++  "nodepool-launcher -d -c /var/lib/nodepool/config.yaml"
                                     ]
                                   , imagePullPolicy = Some "IfNotPresent"
+                                  , env = nodepool-env
                                   , volumeMounts =
                                       mkVolumeMount
                                         (nodepool-volumes # nodepool-data-dir)
