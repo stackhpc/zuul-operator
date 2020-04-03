@@ -31,7 +31,7 @@ alias dhall-to-yaml="$CR run --rm --entrypoint dhall-to-yaml -i docker.io/zuul/z
 alias yaml-to-dhall="$CR run --rm --entrypoint yaml-to-dhall -i docker.io/zuul/zuul-operator"
 ```
 
-## Evaluate the dhall expression manually:
+## Evaluate the dhall expression manually
 
 First you need to convert a CR spec to a dhall record, for example using the test file `playbooks/files/cr_spec.yaml`:
 
@@ -56,6 +56,7 @@ dhall-to-yaml --omit-empty <<< "(./conf/zuul/resources.dhall ($INPUT)).List"
 Given a working `~/.kube/config` context, you can execute the Ansible roles directly using:
 
 ```bash
+export ANSIBLE_CONFIG=playbooks/files/ansible.cfg
 ansible-playbook -v playbooks/files/local.yaml
 ```
 
@@ -63,4 +64,41 @@ Then cleanup the resources using:
 
 ```bash
 ansible-playbook -v playbooks/files/local.yaml -e k8s_state=absent
+```
+
+
+## Run the integration test locally
+
+First you need to build the operator image:
+
+```bash
+make build
+```
+
+Or you can update an existing image with the local dhall and ansible content:
+
+```bash
+./playbooks/files/update-operator.sh
+```
+
+Then you can run the job using:
+
+```bash
+ansible-playbook -e @playbooks/files/local-vars.yaml -v playbooks/zuul-operator-functional/run.yaml
+ansible-playbook -e @playbooks/files/local-vars.yaml -v playbooks/zuul-operator-functional/test.yaml
+```
+
+Alternatively, you can run the job without using the operator pod by including the ansible role directly.
+To do that run the playbooks with:
+
+```
+ansible-playbook -e use_local_role=true ...
+```
+
+## Delete all kubernetes resources
+
+To wipe your namespace run this command:
+
+```bash
+kubectl delete $(for obj in statefulset deployment service secret; do kubectl get $obj -o name; done)
 ```

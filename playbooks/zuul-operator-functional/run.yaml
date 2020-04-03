@@ -84,9 +84,30 @@
               current-context: local
 
     - name: Deploy CR
-      command: make deploy-cr
-      args:
-        chdir: "{{ zuul.projects['opendev.org/zuul/zuul-operator'].src_dir }}"
+      include_tasks: tasks/apply_cr.yaml
+      vars:
+        spec:
+          executor:
+            count: 1
+            ssh_key:
+              secretName: executor-ssh-key
+          merger:
+            count: 1
+          scheduler:
+            config:
+              secretName: zuul-yaml-conf
+          launcher:
+            config:
+              secretName: nodepool-yaml-conf
+          connections:
+            gits:
+              - baseurl: https://opendev.org
+                name: opendev.org
+          external_config:
+            kubernetes:
+              secretName: nodepool-kube-config
+              key: kube.config
+
 
     - name: Wait maximum 4 minutes for the scheduler pod
       shell: |
