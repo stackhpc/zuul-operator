@@ -16,6 +16,29 @@
       command: cat id_rsa
       register: _ssh_key
 
+    - name: Read generated kubectl configuration
+      command: |
+        sed -e 's#/home/zuul/.minikube/profiles/minikube/#/etc/nodepool-kubernetes/#g'
+            -e 's#/home/zuul/.minikube/#/etc/nodepool-kubernetes/#g'
+            ~/.kube/config
+      register: _kube_config
+
+    - name: Read client cert
+      command: cat ~/.minikube/profiles/minikube/client.crt
+      register: _kube_cert
+
+    - name: Read client key
+      command: cat ~/.minikube/profiles/minikube/client.key
+      register: _kube_key
+
+    - name: Read ca cert
+      command: cat ~/.minikube/ca.crt
+      register: _kube_ca
+
+    - name: Read current context name
+      command: kubectl config current-context
+      register: _kube_context
+
     - name: Setup user provided secrets
       k8s:
         namespace: "{{ namespace }}"
@@ -46,42 +69,27 @@
           data:
             nodepool.yaml: |
               labels:
-                - name: pod-centos
+                - name: pod-fedora-31
                   min-ready: 1
               providers:
                 - name: kube-cluster
-                  driver: openshiftpods
-                  context: local
+                  driver: kubernetes
+                  context: {{ _kube_context.stdout }}
                   max-pods: 15
                   pools:
                   - name: default
                     labels:
-                      - name: pod-centos
-                        image: quay.io/software-factory/pod-centos-7
-                        python-path: /bin/python2
+                      - name: pod-fedora-31
+                        type: pod
+                        image: docker.io/fedora:31
+                        python-path: /bin/python3
 
         - name: nodepool-kube-config
           data:
-            kube.config: |
-              apiVersion: v1
-              kind: Config
-              preferences: {}
-              clusters:
-              - cluster:
-                  server: https://10.43.0.1:8043
-                  insecure-skip-tls-verify: true
-                name: local
-              users:
-              - name: nodepool
-                user:
-                  token: test-token
-              contexts:
-              - context:
-                  cluster: local
-                  user: nodepool
-                  namespace: default
-                name: local
-              current-context: local
+            kube.config: "{{ _kube_config.stdout }}"
+            client.crt: "{{ _kube_cert.stdout }}"
+            client.key: "{{ _kube_key.stdout }}"
+            ca.crt: "{{ _kube_ca.stdout }}"
 
     - name: Deploy CR
       include_tasks: tasks/apply_cr.yaml

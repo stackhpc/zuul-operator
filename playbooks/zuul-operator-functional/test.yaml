@@ -84,6 +84,10 @@
                     name: opendev.org
                   - baseurl: "git://{{ ansible_all_ipv4_addresses[0] }}/"
                     name: local-git
+              external_config:
+                kubernetes:
+                  secretName: nodepool-kube-config
+                  key: kube.config
 
     - name: ensure a job is running
       when: skip_check is not defined
@@ -110,6 +114,10 @@
       shell: |
         curl -s {{ zuul_web_url }}/api/tenant/local/status | jq -r '.pipelines[].change_queues[].heads[][].jobs[].uuid'
       register: _job_uuid
+      # Wait until the executor start the job
+      until: _job_uuid.stdout != "" and _job_uuid.stdout != "null"
+      retries: 60
+      delay: 1
 
     - name: connect to console-stream
       command: |
