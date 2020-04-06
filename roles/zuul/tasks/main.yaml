@@ -4,6 +4,11 @@
     - zuul-lookup-conf
     - zuul-ensure-gearman-tls
 
+- include_role:
+    name: zuul-ensure-database-password
+  # when the user does not provide a db_uri
+  when: raw_spec['database'] is not defined
+
 - name: Convert spec to template input
   json_to_dhall:
     schema: "({{ zuul_app_path }}/input.dhall).Input.Type"

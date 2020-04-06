@@ -1,7 +1,18 @@
 {- Zuul CR kubernetes resources
 
 The evaluation of that file is a function that takes the cr inputs as an argument,
-and returns the list of kubernetes of objects
+and returns the list of kubernetes of objects.
+
+The resources expect secrets to be created by the zuul ansible role:
+
+* `${name}-gearman-tls` with:
+  * `ca.pem`
+  * `server.pem`
+  * `server.key`
+  * `client.pem`
+  * `client.key`
+
+* `${name}-database-password` with a `password` key, (unless an input.database db uri is provided).
 -}
 let Prelude = ../Prelude.dhall
 
@@ -97,7 +108,6 @@ let {- This method renders the zuul.conf
     -} mkZuulConf =
           \(input : Input)
       ->  \(zk-hosts : Text)
-      ->  \(default-db-password : Text)
       ->  let {- This is a high level method. It takes:
               * a Connection type such as `Schemas.Gerrit.Type`,
               * an Optional List of that type
@@ -134,8 +144,8 @@ let {- This method renders the zuul.conf
 
           let db-uri =
                 merge
-                  { None = "postgresql://zuul:${default-db-password}@db/zuul"
-                  , Some = \(some : UserSecret) -> "%(ZUUL_DB_URI)"
+                  { None = "postgresql://zuul:%(ZUUL_DB_PASSWORD)s@db/zuul"
+                  , Some = \(some : UserSecret) -> "%(ZUUL_DB_URI)s"
                   }
                   input.database
 
@@ -516,6 +526,15 @@ in      \(input : Input)
                 }
                 input.zookeeper
 
+        let db-internal-password-env =
+                  \(env-name : Text)
+              ->  mkEnvVarSecret
+                    [ { name = env-name
+                      , secret = "${input.name}-database-password"
+                      , key = "password"
+                      }
+                    ]
+
         let org = "docker.io/zuul"
 
         let version = "latest"
@@ -541,18 +560,12 @@ in      \(input : Input)
                 ]
               }
 
-        let {- TODO: generate random password -} default-db-password =
-              "super-secret"
-
         let etc-zuul =
               Volume::{
               , name = input.name ++ "-secret-zuul"
               , dir = "/etc/zuul"
               , files =
-                [ { path = "zuul.conf"
-                  , content = mkZuulConf input zk-hosts default-db-password
-                  }
-                ]
+                [ { path = "zuul.conf", content = mkZuulConf input zk-hosts } ]
               }
 
         let etc-nodepool =
@@ -603,15 +616,15 @@ in      \(input : Input)
                                             }
                                           ]
                                         , env = Some
-                                            ( mkEnvVarValue
-                                                ( toMap
-                                                    { POSTGRES_USER = "zuul"
-                                                    , POSTGRES_PASSWORD =
-                                                        default-db-password
-                                                    , PGDATA =
-                                                        "/var/lib/pg/data"
-                                                    }
-                                                )
+                                            (   mkEnvVarValue
+                                                  ( toMap
+                                                      { POSTGRES_USER = "zuul"
+                                                      , PGDATA =
+                                                          "/var/lib/pg/data"
+                                                      }
+                                                  )
+                                              # db-internal-password-env
+                                                  "POSTGRES_PASSWORD"
                                             )
                                         , volumeMounts = Some
                                             (mkVolumeMount db-volumes)
@@ -665,9 +678,9 @@ in      \(input : Input)
                   let zuul-env =
                         mkEnvVarValue (toMap { HOME = "/var/lib/zuul" })
 
-                  let db-uri-secret-env =
+                  let db-secret-env =
                         merge
-                          { None = [] : List Kubernetes.EnvVar.Type
+                          { None = db-internal-password-env "ZUUL_DB_PASSWORD"
                           , Some =
                                   \(some : UserSecret)
                               ->  mkEnvVarSecret
@@ -678,6 +691,10 @@ in      \(input : Input)
                                     ]
                           }
                           input.database
+
+                  let {- executor and merger do not need database info, but they fail to parse config without the env variable
+                      -} db-nosecret-env =
+                        mkEnvVarValue (toMap { ZUUL_DB_PASSWORD = "unused" })
 
                   let zuul-data-dir =
                         [ Volume::{ name = "zuul-data", dir = "/var/lib/zuul" }
@@ -734,7 +751,7 @@ in      \(input : Input)
                                     ]
                                   , env = Some
                                       (   zuul-env
-                                        # db-uri-secret-env
+                                        # db-secret-env
                                         # zk-hosts-secret-env
                                       )
                                   , volumeMounts = Some
@@ -776,7 +793,7 @@ in      \(input : Input)
                                       , containerPort = 7900
                                       }
                                     ]
-                                  , env = Some zuul-env
+                                  , env = Some (zuul-env # db-nosecret-env)
                                   , volumeMounts =
                                       let job-volumes-mount =
                                             mkJobVolume
@@ -824,7 +841,11 @@ in      \(input : Input)
                                       , containerPort = 9000
                                       }
                                     ]
-                                  , env = Some zuul-env
+                                  , env = Some
+                                      (   zuul-env
+                                        # db-secret-env
+                                        # zk-hosts-secret-env
+                                      )
                                   , volumeMounts = Some
                                       ( mkVolumeMount
                                           (web-volumes # zuul-data-dir)
@@ -846,7 +867,7 @@ in      \(input : Input)
                                   , image = zuul-image "merger"
                                   , args = Some [ "zuul-merger", "-d" ]
                                   , imagePullPolicy = Some "IfNotPresent"
-                                  , env = Some zuul-env
+                                  , env = Some (zuul-env # db-nosecret-env)
                                   , volumeMounts = Some
                                       ( mkVolumeMount
                                           (merger-volumes # zuul-data-dir)

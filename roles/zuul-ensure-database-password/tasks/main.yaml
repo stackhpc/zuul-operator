@@ -1,0 +1,16 @@
+- name: Check if zuul database-password is already created
+  set_fact:
+    _zuul_db_password: "{{ lookup('k8s', api_version='v1', kind='Secret', namespace=namespace, resource_name=zuul_name + '-database-password') }}"
+
+- name: Generate and store database password
+  when: _zuul_db_password.data is not defined
+  k8s:
+    state: "{{ state }}"
+    namespace: "{{ namespace }}"
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: "{{ zuul_name }}-database-password"
+      stringData:
+        password: "{{ lookup('password', '/dev/null') }}"
