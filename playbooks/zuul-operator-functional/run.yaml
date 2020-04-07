@@ -1,10 +1,27 @@
 - name: install and start zuul operator
   hosts: all
   tasks:
+    - name: Render default crd
+      when:
+        - not use_local_role | default(false) | bool
+      shell: |
+        set -e
+        JSON_TO_DHALL="{{ container_runtime }} run -v $(pwd)/conf:/conf:Z --rm --entrypoint json-to-dhall -i docker.io/zuul/zuul-operator"
+        DHALL_TO_YAML="{{ container_runtime }} run -v $(pwd)/conf:/conf:Z --rm --entrypoint dhall-to-yaml -i docker.io/zuul/zuul-operator"
+        JSON=$(python3 -c 'import yaml, json; print(json.dumps(yaml.safe_load(open("playbooks/files/cr_spec.yaml"))))')
+        INPUT=$(echo $JSON | $JSON_TO_DHALL '(/conf/zuul/input.dhall).Input.Type')
+        echo '(/conf/zuul/resources.dhall ('$INPUT')).List' | $DHALL_TO_YAML > ~/zuul-output/logs/cr_spec-resources.yaml
+      args:
+        executable: /bin/bash
+        chdir: "{{ zuul.projects['opendev.org/zuul/zuul-operator'].src_dir }}"
+
     - name: Setup CRD
       command: make install
       args:
         chdir: "{{ zuul.projects['opendev.org/zuul/zuul-operator'].src_dir }}"
+
+    - name: Wait for operator deployment
+      command: timeout 8m kubectl rollout status deployment/zuul-operator
 
     - name: Generate executor ssh key
       command: ssh-keygen -t rsa -m PEM -N '' -f 'id_rsa' -q -C 'zuul-executor'
@@ -116,28 +133,33 @@
               secretName: nodepool-kube-config
               key: kube.config
 
-
-    - name: Wait maximum 4 minutes for the scheduler pod
+    - name: Wait maximum 4 minutes for the scheduler deployment
       shell: |
         for idx in $(seq 24); do
           date;
-          for res in statefulsets deployments pods; do echo == $res ==; kubectl get $res; done
-          kubectl get pod zuul-scheduler-0 2> /dev/null && break || :
+          kubectl get statefulset zuul-scheduler 2> /dev/null && break || :
           sleep 10;
         done
 
-    - name: Wait 2 minutes for the scheduler pod to be ready
-      command: kubectl wait --for=condition=Ready --timeout=120s pod/zuul-scheduler-0
+    - name: Wait for scheduler deployment
+      command: timeout 10m kubectl rollout status statefulset/zuul-scheduler
 
-    - name: Wait 4 minutes for scheduler to settle
+    - name: Wait 8 minutes for scheduler to settle
       command: kubectl logs pod/zuul-scheduler-0
       register: _scheduler_log
       until: "'Full reconfiguration complete' in _scheduler_log.stdout"
       delay: 10
-      retries: 24
+      retries: 48
 
-    - name: Wait 2 minutes for the executor pod to be ready
-      command: kubectl wait --for=condition=Ready --timeout=120s pod/zuul-executor-0
+    - name: Wait for executor deployment
+      command: timeout 10m kubectl rollout status statefulset/zuul-executor
+
+    - name: Wait 8 minutes for launcher to settle
+      command: kubectl logs deployment/zuul-launcher
+      register: _launcher_log
+      until: "'Active requests' in _launcher_log.stdout"
+      delay: 10
+      retries: 48
 
     - name: Wait an extra 2 minutes for the services to settle
       pause:

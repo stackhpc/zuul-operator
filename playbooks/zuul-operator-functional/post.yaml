@@ -3,7 +3,8 @@
     - collect-container-logs
   post_tasks:
     - name: Describe resources
-      command: "kubectl describe {{ item }}"
+      command: "bash -c 'kubectl describe {{ item }} > ~/zuul-output/logs/describe-{{ item }}.txt'"
+      ignore_errors: yes
       loop:
         - pods
         - deployments
@@ -12,10 +13,6 @@
         - secrets
         - configmaps
 
-    - name: Grab scheduler logs
-      command: "kubectl logs statefulset/zuul-scheduler"
-      ignore_errors: yes
-
-    - name: Grab executor logs
-      command: "kubectl logs statefulset/zuul-executor"
+    - name: Delete empty container logs
+      command: "find {{ ansible_user_dir }}/zuul-output/logs/ -type f -empty -delete"
       ignore_errors: yes

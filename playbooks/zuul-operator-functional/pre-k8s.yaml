@@ -14,4 +14,8 @@
       buildset_registry_docker_user: root
   post_tasks:
     - name: check kubernetes connection
-      command: kubectl get pods
+      command: timeout 10s kubectl get pods
+      register: _api_ready
+      until: _api_ready.rc == 0
+      retries: 6
+      delay: 10

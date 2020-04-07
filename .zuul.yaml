@@ -10,6 +10,7 @@
       # We disable userland-proxy to enable scheduler deployement to connect to the gearman service
       # see: https://github.com/eclipse/che/issues/8134
       docker_userland_proxy: false
+      container_runtime: docker
 
 - job:
     description: Operator integration tests with Kubernetes
