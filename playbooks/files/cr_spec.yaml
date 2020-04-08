@@ -13,6 +13,8 @@ merger:
 scheduler:
   config:
     secretName: zuul-yaml-conf
+preview:
+  count: 0
 registry:
   count: 0
 launcher:

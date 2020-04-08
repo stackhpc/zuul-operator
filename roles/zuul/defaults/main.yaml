@@ -14,5 +14,6 @@ cert_manager: "{{ (raw_spec['withCertManager'] | default(true)) | bool }}"
 spec_defaults:
   web: {}
   registry: {}
+  preview: {}
   externalConfig: {}
   withCertManager: true
