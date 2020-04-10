@@ -24,7 +24,7 @@ def pread(args: List[str], stdin: str) -> str:
     proc = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = proc.communicate(stdin.encode('utf-8'))
     if stderr:
-        raise RuntimeError("Command failed: " + stderr.decode('utf-8'))
+        raise RuntimeError(stderr.decode('utf-8'))
     return stdout.decode('utf-8')
 
 
@@ -43,7 +43,7 @@ def ansible_main():
     try:
         module.exit_json(changed=True, result=run(p['schema'], p['json']))
     except Exception as e:
-        module.fail_json(msg="Dhall expression failed:" + str(e))
+        module.fail_json(msg="Dhall expression failed", error=str(e))
 
 
 def cli_main():

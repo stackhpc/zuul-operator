@@ -9,23 +9,7 @@
     meta:
       name: zuul
       namespace: default
-    spec:
-      executor:
-        count: 1
-        ssh_key:
-          secretName: executor-ssh-key
-      merger:
-        count: 1
-      scheduler:
-        config:
-          secretName: zuul-yaml-conf
-      launcher:
-        config:
-          secretName: nodepool-yaml-conf
-      connections:
-        gits:
-          - baseurl: https://opendev.org
-            name: opendev.org
+    spec: "{{ lookup('file', './cr_spec.yaml') | from_yaml }}"
   pre_tasks:
     - name: "Create necessary secrets"
       k8s:

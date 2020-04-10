@@ -9,17 +9,20 @@
     schema: "({{ zuul_app_path }}/input.dhall).Input.Type"
     json: "{{ rspec | to_json }}"
   vars:
-    rspec:
-      name: "{{ zuul_name }}"
-      merger: "{{ raw_spec['merger'] | default({}) }}"
-      executor: "{{ raw_spec['executor'] | default({}) }}"
-      web: "{{ raw_spec['web'] | default({}) }}"
-      scheduler: "{{ raw_spec['scheduler'] | default({}) }}"
-      launcher: "{{ raw_spec['launcher'] | default({}) }}"
-      jobVolumes: "{{ raw_spec['jobVolumes'] | default([]) }}"
-      externalConfig: "{{ raw_spec['externalConfig'] | default({}) }}"
-      connections: "{{ raw_spec['connections'] | default({}) }}"
+    rspec: "{{ spec_defaults | combine(raw_spec) | combine({'name': zuul_name}) }}"
+  failed_when: false
   register: _cr_input
+
+- name: Explain schema conversion issue
+  when: _cr_input.error is defined
+  fail:
+    msg: |
+      The provided Zuul spec is incorrect:
+
+      {{ _cr_input.error }}
+
+      Attributes starting with a `-` are expected.
+      Attributes starting with a `+` were provided but not expected.
 
 - name: Convert expression to kubernetes objects
   dhall_to_json:
