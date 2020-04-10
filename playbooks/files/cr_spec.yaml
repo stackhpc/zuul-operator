@@ -41,3 +41,4 @@ jobVolumes:
 # extra
 name: zuul
 web: {}
+withCertManager: true

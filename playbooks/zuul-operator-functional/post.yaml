@@ -6,6 +6,8 @@
       command: "bash -c 'kubectl describe {{ item }} > ~/zuul-output/logs/describe-{{ item }}.txt'"
       ignore_errors: yes
       loop:
+        - issuer
+        - certificate
         - pods
         - deployments
         - statefulsets

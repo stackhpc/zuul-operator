@@ -20,6 +20,7 @@
     nodeset: ubuntu-bionic
     vars:
       namespace: 'default'
+      withCertManager: true
 
 - job:
     description: Image and buildset registry job

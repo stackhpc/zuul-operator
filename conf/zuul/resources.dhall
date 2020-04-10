@@ -31,6 +31,8 @@ let Prelude = ../Prelude.dhall
 
 let Kubernetes = ../Kubernetes.dhall
 
+let CertManager = ../CertManager.dhall
+
 let Schemas = ./input.dhall
 
 let F = ./functions.dhall
@@ -177,7 +179,55 @@ in      \(input : Input)
               }
 
         let Components =
-              { Backend =
+              { CertManager =
+                  let issuer =
+                        { kind = "Issuer"
+                        , group = "cert-manager.io"
+                        , name = "${input.name}-ca"
+                        }
+
+                  in  { Issuers =
+                        [ CertManager.Issuer::{
+                          , metadata =
+                              F.mkObjectMeta
+                                "${input.name}-selfsigning"
+                                ( F.mkComponentLabel
+                                    input.name
+                                    "issuer-selfsigning"
+                                )
+                          , spec = CertManager.IssuerSpec::{
+                            , selfSigned = Some {=}
+                            }
+                          }
+                        , CertManager.Issuer::{
+                          , metadata =
+                              F.mkObjectMeta
+                                "${input.name}-ca"
+                                (F.mkComponentLabel input.name "issuer-ca")
+                          , spec = CertManager.IssuerSpec::{
+                            , ca = Some { secretName = "${input.name}-ca" }
+                            }
+                          }
+                        ]
+                      , Certificates =
+                        [ CertManager.Certificate::{
+                          , metadata =
+                              F.mkObjectMeta
+                                "${input.name}-ca"
+                                (F.mkComponentLabel input.name "cert-ca")
+                          , spec = CertManager.CertificateSpec::{
+                            , secretName = "${input.name}-ca"
+                            , isCA = Some True
+                            , commonName = Some "selfsigned-root-ca"
+                            , issuerRef =
+                                issuer // { name = "${input.name}-selfsigning" }
+                            , usages = Some
+                              [ "server auth", "client auth", "cert sign" ]
+                            }
+                          }
+                        ]
+                      }
+              , Backend =
                   { Database =
                       merge
                         { None =
@@ -434,25 +484,56 @@ in      \(input : Input)
                           }
                           component.Deployment
 
+        let {- This function transform the Kubernetes.Resources type into the new Union
+               that combines Kubernetes and CertManager resources
+            -} transformKubernetesResource =
+              Prelude.List.map
+                Kubernetes.Resource
+                CertManager.Union
+                (     \(resource : Kubernetes.Resource)
+                  ->  CertManager.Union.Kubernetes resource
+                )
+
+        let {- if cert-manager is enabled, then includes and transforms the CertManager types
+               into the new Union that combines Kubernetes and CertManager resources
+            -} all-certificates =
+                    if input.withCertManager
+
+              then    Prelude.List.map
+                        CertManager.Issuer.Type
+                        CertManager.Union
+                        CertManager.Union.Issuer
+                        Components.CertManager.Issuers
+                    # Prelude.List.map
+                        CertManager.Certificate.Type
+                        CertManager.Union
+                        CertManager.Union.Certificate
+                        Components.CertManager.Certificates
+
+              else  [] : List CertManager.Union
+
         in  { Components = Components
             , List =
                 { apiVersion = "v1"
                 , kind = "List"
                 , items =
-                      Prelude.List.map
-                        Volume.Type
-                        Kubernetes.Resource
-                        mkSecret
-                        (   zk-conf
-                          # [ etc-zuul, etc-nodepool, etc-zuul-registry ]
+                      all-certificates
+                    # transformKubernetesResource
+                        (   Prelude.List.map
+                              Volume.Type
+                              Kubernetes.Resource
+                              mkSecret
+                              (   zk-conf
+                                # [ etc-zuul, etc-nodepool, etc-zuul-registry ]
+                              )
+                          # mkUnion Components.Backend.Database
+                          # mkUnion Components.Backend.ZooKeeper
+                          # mkUnion Components.Zuul.Scheduler
+                          # mkUnion Components.Zuul.Executor
+                          # mkUnion Components.Zuul.Web
+                          # mkUnion Components.Zuul.Merger
+                          # mkUnion Components.Zuul.Registry
+                          # mkUnion Components.Nodepool.Launcher
                         )
-                    # mkUnion Components.Backend.Database
-                    # mkUnion Components.Backend.ZooKeeper
-                    # mkUnion Components.Zuul.Scheduler
-                    # mkUnion Components.Zuul.Executor
-                    # mkUnion Components.Zuul.Web
-                    # mkUnion Components.Zuul.Merger
-                    # mkUnion Components.Zuul.Registry
-                    # mkUnion Components.Nodepool.Launcher
                 }
             }

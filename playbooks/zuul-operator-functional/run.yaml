@@ -134,6 +134,7 @@
               key: kube.config
           registry:
             count: 1
+          withCertManager: "{{ withCertManager }}"
 
     - name: Wait maximum 4 minutes for the scheduler deployment
       shell: |
@@ -166,6 +167,10 @@
     - name: Wait an extra 2 minutes for the services to settle
       pause:
         minutes: 2
+
+    - name: Look for the cert-manager issuer
+      command: kubectl get Issuers zuul-ca -o yaml
+      when: withCertManager
 
     - name: Test the registry
       block:
