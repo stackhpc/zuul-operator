@@ -21,7 +21,7 @@ import gear  # type: ignore
 
 def connect(host : str) -> Any:
     client = gear.Client()
-    client.addServer(host, 4730, 'client.key', 'client.pem', 'ca.pem')
+    client.addServer(host, 4730, 'tls.key', 'tls.crt', 'ca.crt')
     client.waitForServer(timeout=10)
     return client
 

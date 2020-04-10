@@ -7,6 +7,9 @@ zuul_app_path: "/opt/ansible/conf/zuul"
 # see: https://github.com/operator-framework/operator-sdk/issues/1770
 raw_spec: "{{ vars['_operator_zuul-ci_org_zuul_spec'] | default(spec) }}"
 
+# Let optional withCertManager bool value
+cert_manager: "{{ (raw_spec['withCertManager'] | default(true)) | bool }}"
+
 # Provide sensible default for non optional attributes:
 spec_defaults:
   web: {}

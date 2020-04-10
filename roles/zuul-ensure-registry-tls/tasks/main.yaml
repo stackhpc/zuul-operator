@@ -5,6 +5,10 @@
 - name: Generate and store certs
   when: registry_certs.data is not defined
   block:
+    - name: Generate temporary CA
+      when: cert_manager
+      command: "openssl req -new -newkey rsa:2048 -nodes -keyout ca-{{ zuul_name }}.key -x509 -days 3650 -out ca-{{ zuul_name }}.pem -subj '/C=US/ST=Texas/L=Austin/O=Zuul/CN=gearman-ca'"
+
     - name: Generate certs
       command: "{{ item }}"
       loop:

@@ -151,15 +151,15 @@ TODO: replace input schemas by the required attributes.
     in      ''
             [gearman]
             server=scheduler
-            ssl_ca=/etc/zuul-gearman/ca.pem
-            ssl_cert=/etc/zuul-gearman/client.pem
-            ssl_key=/etc/zuul-gearman/client.key
+            ssl_ca=/etc/zuul-gearman/ca.crt
+            ssl_cert=/etc/zuul-gearman/tls.crt
+            ssl_key=/etc/zuul-gearman/tls.key
 
             [gearman_server]
             start=true
-            ssl_ca=/etc/zuul-gearman/ca.pem
-            ssl_cert=/etc/zuul-gearman/server.pem
-            ssl_key=/etc/zuul-gearman/server.key
+            ssl_ca=/etc/zuul-gearman/ca.crt
+            ssl_cert=/etc/zuul-gearman/tls.crt
+            ssl_key=/etc/zuul-gearman/tls.key
 
             [zookeeper]
             ${zk-hosts}

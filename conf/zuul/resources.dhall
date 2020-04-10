@@ -3,14 +3,14 @@
 The evaluation of that file is a function that takes the cr inputs as an argument,
 and returns the list of kubernetes of objects.
 
-The resources expect secrets to be created by the zuul ansible role:
+Unless cert-manager usage is enabled, the resources expect those secrets to be available:
 
 * `${name}-gearman-tls` with:
-  * `ca.pem`
-  * `server.pem`
-  * `server.key`
-  * `client.pem`
-  * `client.key`
+  * `ca.crt`
+  * `tls.crt`
+  * `tls.key`
+
+The resources expect those secrets to be available:
 
 * `${name}-zookeeper-tls` with:
   * `ca.crt`
@@ -25,7 +25,9 @@ The resources expect secrets to be created by the zuul ansible role:
   * `username` the user name with write access
   * `password` the user password
 
-* `${name}-database-password` with a `password` key, (unless an input.database db uri is provided).
+Unless the input.database db uri is provided, the resources expect this secret to be available:
+
+* `${name}-database-password` the internal database password.
 -}
 let Prelude = ../Prelude.dhall
 
@@ -223,6 +225,18 @@ in      \(input : Input)
                                 issuer // { name = "${input.name}-selfsigning" }
                             , usages = Some
                               [ "server auth", "client auth", "cert sign" ]
+                            }
+                          }
+                        , CertManager.Certificate::{
+                          , metadata =
+                              F.mkObjectMeta
+                                "${input.name}-gearman-tls"
+                                (F.mkComponentLabel input.name "cert-gearman")
+                          , spec = CertManager.CertificateSpec::{
+                            , secretName = "${input.name}-gearman-tls"
+                            , issuerRef = issuer
+                            , dnsNames = Some [ "gearman" ]
+                            , usages = Some [ "server auth", "client auth" ]
                             }
                           }
                         ]
