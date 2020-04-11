@@ -186,7 +186,7 @@
             line: "{{ _registry_ip.stdout_lines[0] }} registry"
 
         - name: Get registry password
-          command: kubectl get secret zuul-registry-tls -o "jsonpath={.data.password}"
+          command: kubectl get secret zuul-registry-user-rw -o "jsonpath={.data.password}"
           register: _registry_password
 
         - name: Test registry login
