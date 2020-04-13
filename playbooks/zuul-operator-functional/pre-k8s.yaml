@@ -5,8 +5,8 @@
       command: python3 -m pip install --user openshift
   roles:
     - role: clear-firewall
-    - role: install-podman
-    - role: install-kubernetes
+    - role: ensure-podman
+    - role: ensure-kubernetes
       vars:
         minikube_dns_resolvers:
           - '1.1.1.1'
