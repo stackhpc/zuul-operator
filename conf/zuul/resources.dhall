@@ -41,10 +41,6 @@ let JobVolume = Schemas.JobVolume.Type
 
 let UserSecret = Schemas.UserSecret.Type
 
-let Label = { mapKey : Text, mapValue : Text }
-
-let Labels = List Label
-
 let EnvSecret = { name : Text, secret : Text, key : Text }
 
 let File = { path : Text, content : Text }
@@ -88,53 +84,7 @@ let {- The Kubernetes resources of a Component
       }
 
 in      \(input : Input)
-    ->  let app-labels =
-              [ { mapKey = "app.kubernetes.io/name", mapValue = input.name }
-              , { mapKey = "app.kubernetes.io/instance", mapValue = input.name }
-              , { mapKey = "app.kubernetes.io/part-of", mapValue = "zuul" }
-              ]
-
-        let component-label =
-                  \(name : Text)
-              ->    app-labels
-                  # [ { mapKey = "app.kubernetes.io/component"
-                      , mapValue = name
-                      }
-                    ]
-
-        let mkObjectMeta =
-                  \(name : Text)
-              ->  \(labels : Labels)
-              ->  Kubernetes.ObjectMeta::{ name = name, labels = Some labels }
-
-        let mkSelector =
-                  \(labels : Labels)
-              ->  Kubernetes.LabelSelector::{ matchLabels = Some labels }
-
-        let mkService =
-                  \(name : Text)
-              ->  \(port-name : Text)
-              ->  \(port : Natural)
-              ->  let labels = component-label name
-
-                  in  Kubernetes.Service::{
-                      , metadata = mkObjectMeta name labels
-                      , spec = Some Kubernetes.ServiceSpec::{
-                        , type = Some "ClusterIP"
-                        , selector = Some labels
-                        , ports = Some
-                          [ Kubernetes.ServicePort::{
-                            , name = Some port-name
-                            , protocol = Some "TCP"
-                            , targetPort = Some
-                                (Kubernetes.IntOrString.String port-name)
-                            , port = port
-                            }
-                          ]
-                        }
-                      }
-
-        let mkVolumeEmptyDir =
+    ->  let mkVolumeEmptyDir =
               Prelude.List.map
                 Volume.Type
                 Kubernetes.Volume.Type
@@ -161,9 +111,9 @@ in      \(input : Input)
 
         let mkPodTemplateSpec =
                   \(component : Component.Type)
-              ->  \(labels : Labels)
+              ->  \(labels : F.Labels)
               ->  Kubernetes.PodTemplateSpec::{
-                  , metadata = mkObjectMeta component.name labels
+                  , metadata = F.mkObjectMeta component.name labels
                   , spec = Some Kubernetes.PodSpec::{
                     , volumes = Some
                         (   mkVolumeSecret component.volumes
@@ -177,7 +127,7 @@ in      \(input : Input)
 
         let mkStatefulSet =
                   \(component : Component.Type)
-              ->  let labels = component-label component.name
+              ->  let labels = F.mkComponentLabel input.name component.name
 
                   let component-name = input.name ++ "-" ++ component.name
 
@@ -189,8 +139,9 @@ in      \(input : Input)
                         else  [ Kubernetes.PersistentVolumeClaim::{
                                 , apiVersion = ""
                                 , kind = ""
-                                , metadata =
-                                    mkObjectMeta component-name ([] : Labels)
+                                , metadata = Kubernetes.ObjectMeta::{
+                                  , name = component-name
+                                  }
                                 , spec = Some Kubernetes.PersistentVolumeClaimSpec::{
                                   , accessModes = Some [ "ReadWriteOnce" ]
                                   , resources = Some Kubernetes.ResourceRequirements::{
@@ -208,11 +159,11 @@ in      \(input : Input)
                               ]
 
                   in  Kubernetes.StatefulSet::{
-                      , metadata = mkObjectMeta component-name labels
+                      , metadata = F.mkObjectMeta component-name labels
                       , spec = Some Kubernetes.StatefulSetSpec::{
                         , serviceName = component.name
                         , replicas = Some component.count
-                        , selector = mkSelector labels
+                        , selector = F.mkSelector labels
                         , template = mkPodTemplateSpec component labels
                         , volumeClaimTemplates = Some claim
                         }
@@ -220,24 +171,24 @@ in      \(input : Input)
 
         let mkDeployment =
                   \(component : Component.Type)
-              ->  let labels = component-label component.name
+              ->  let labels = F.mkComponentLabel input.name component.name
 
                   let component-name = input.name ++ "-" ++ component.name
 
                   in  Kubernetes.Deployment::{
-                      , metadata = mkObjectMeta component-name labels
+                      , metadata = F.mkObjectMeta component-name labels
                       , spec = Some Kubernetes.DeploymentSpec::{
                         , replicas = Some component.count
-                        , selector = mkSelector labels
+                        , selector = F.mkSelector labels
                         , template = mkPodTemplateSpec component labels
                         }
                       }
 
         let mkEnvVarValue =
               Prelude.List.map
-                Label
+                F.Label
                 Kubernetes.EnvVar.Type
-                (     \(env : Label)
+                (     \(env : F.Label)
                   ->  Kubernetes.EnvVar::{
                       , name = env.mapKey
                       , value = Some env.mapValue
@@ -440,7 +391,8 @@ in      \(input : Input)
                   in  { Database =
                           merge
                             { None = KubernetesComponent::{
-                              , Service = Some (mkService "db" "pg" 5432)
+                              , Service = Some
+                                  (F.mkService input.name "db" "pg" 5432)
                               , StatefulSet = Some
                                   ( mkStatefulSet
                                       Component::{
@@ -484,7 +436,8 @@ in      \(input : Input)
                       , ZooKeeper =
                           merge
                             { None = KubernetesComponent::{
-                              , Service = Some (mkService "zk" "zk" 2281)
+                              , Service = Some
+                                  (F.mkService input.name "zk" "zk" 2281)
                               , StatefulSet = Some
                                   ( mkStatefulSet
                                       Component::{
@@ -589,7 +542,8 @@ in      \(input : Input)
                   let executor-volumes = zuul-volumes # [ executor-ssh-key ]
 
                   in  { Scheduler = KubernetesComponent::{
-                        , Service = Some (mkService "scheduler" "gearman" 4730)
+                        , Service = Some
+                            (F.mkService input.name "scheduler" "gearman" 4730)
                         , StatefulSet = Some
                             ( mkStatefulSet
                                 Component::{
@@ -623,7 +577,8 @@ in      \(input : Input)
                             )
                         }
                       , Executor = KubernetesComponent::{
-                        , Service = Some (mkService "executor" "finger" 7900)
+                        , Service = Some
+                            (F.mkService input.name "executor" "finger" 7900)
                         , StatefulSet = Some
                             ( mkStatefulSet
                                 Component::{
@@ -682,7 +637,8 @@ in      \(input : Input)
                             )
                         }
                       , Web = KubernetesComponent::{
-                        , Service = Some (mkService "web" "api" 9000)
+                        , Service = Some
+                            (F.mkService input.name "web" "api" 9000)
                         , Deployment = Some
                             ( mkDeployment
                                 Component::{
@@ -762,7 +718,12 @@ in      \(input : Input)
 
                           in  KubernetesComponent::{
                               , Service = Some
-                                  (mkService "registry" "registry" 9000)
+                                  ( F.mkService
+                                      input.name
+                                      "registry"
+                                      "registry"
+                                      9000
+                                  )
                               , StatefulSet = Some
                                   ( mkStatefulSet
                                       Component::{
