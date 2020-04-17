@@ -142,7 +142,10 @@ in      \(input : Input)
                       }
                     ]
 
-        let org = "docker.io/zuul"
+        let org =
+              merge
+                { None = "docker.io/zuul", Some = \(prefix : Text) -> prefix }
+                input.imagePrefix
 
         let version = "latest"
 
