@@ -2,10 +2,12 @@ let Kubernetes = ../../Kubernetes.dhall
 
 let F = ../functions.dhall
 
+let InputExecutor = (../input.dhall).Executor.Type
+
 let JobVolume = (../input.dhall).JobVolume.Type
 
 in      \(app-name : Text)
-    ->  \(image-name : Optional Text)
+    ->  \(input-executor : InputExecutor)
     ->  \(data-dir : List F.Volume.Type)
     ->  \(volumes : List F.Volume.Type)
     ->  \(env : List Kubernetes.EnvVar.Type)
@@ -31,7 +33,7 @@ in      \(app-name : Text)
                 , claim-size = 0
                 , container = Kubernetes.Container::{
                   , name = "executor"
-                  , image = image-name
+                  , image = input-executor.image
                   , args = Some [ "zuul-executor", "-d" ]
                   , imagePullPolicy = Some "IfNotPresent"
                   , ports = Some

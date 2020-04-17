@@ -148,6 +148,17 @@ in      \(input : Input)
 
         let image = \(name : Text) -> "${org}/${name}:${version}"
 
+        let set-image =
+                  \(default-name : Text)
+              ->  \(input-name : Optional Text)
+              ->  { image =
+                      merge
+                        { None = Some default-name
+                        , Some = \(_ : Text) -> input-name
+                        }
+                        input-name
+                  }
+
         let etc-zuul =
               Volume::{
               , name = input.name ++ "-secret-zuul"
@@ -306,7 +317,7 @@ in      \(input : Input)
                   }
               , Zuul =
                   let zuul-image =
-                        \(name : Text) -> Some (image ("zuul-" ++ name))
+                        \(name : Text) -> set-image (image "zuul-${name}")
 
                   let zuul-env =
                         F.mkEnvVarValue (toMap { HOME = "/var/lib/zuul" })
@@ -357,14 +368,18 @@ in      \(input : Input)
                   in  { Scheduler =
                           ./components/Scheduler.dhall
                             input.name
-                            (zuul-image "scheduler")
+                            (     input.scheduler
+                              //  zuul-image "scheduler" input.scheduler.image
+                            )
                             zuul-data-dir
                             (zuul-volumes # [ sched-config ])
                             (zuul-env # db-secret-env # zk-hosts-secret-env)
                       , Executor =
                           ./components/Executor.dhall
                             input.name
-                            (zuul-image "executor")
+                            (     input.executor
+                              //  zuul-image "executor" input.executor.image
+                            )
                             zuul-data-dir
                             (zuul-volumes # [ executor-ssh-key ])
                             (zuul-env # db-nosecret-env)
@@ -372,30 +387,34 @@ in      \(input : Input)
                       , Web =
                           ./components/Web.dhall
                             input.name
-                            (zuul-image "web")
+                            (input.web // zuul-image "web" input.web.image)
                             zuul-data-dir
                             zuul-volumes
                             (zuul-env # db-secret-env # zk-hosts-secret-env)
                       , Merger =
                           ./components/Merger.dhall
                             input.name
-                            (zuul-image "merger")
+                            (     input.merger
+                              //  zuul-image "merger" input.merger.image
+                            )
                             zuul-data-dir
                             zuul-volumes
                             (zuul-env # db-nosecret-env)
                       , Registry =
                           ./components/Registry.dhall
                             input.name
-                            (zuul-image "registry")
+                            (     input.registry
+                              //  zuul-image "registry" input.registry.image
+                            )
                             zuul-data-dir
                             [ etc-zuul-registry ]
-                            input.registry
                       , Preview =
                           ./components/Preview.dhall
                             input.name
-                            (zuul-image "preview")
+                            (     input.preview
+                              //  zuul-image "preview" input.preview.image
+                            )
                             zuul-data-dir
-                            input.preview
                       }
               , Nodepool =
                   let nodepool-image =

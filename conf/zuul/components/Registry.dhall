@@ -30,10 +30,9 @@ let registry-env =
             )
 
 in      \(app-name : Text)
-    ->  \(image-name : Optional Text)
+    ->  \(input-registry : InputRegistry)
     ->  \(data-dir : List F.Volume.Type)
     ->  \(volumes : List F.Volume.Type)
-    ->  \(input-registry : InputRegistry)
     ->  F.KubernetesComponent::{
         , Service = Some (F.mkService app-name "registry" "registry" 9000)
         , StatefulSet = Some
@@ -47,7 +46,7 @@ in      \(app-name : Text)
                 , claim-size = F.defaultNat input-registry.storage-size 20
                 , container = Kubernetes.Container::{
                   , name = "registry"
-                  , image = image-name
+                  , image = input-registry.image
                   , args = Some
                     [ "zuul-registry"
                     , "-c"

@@ -5,9 +5,8 @@ let F = ../functions.dhall
 let InputPreview = (../input.dhall).Preview.Type
 
 in      \(app-name : Text)
-    ->  \(image-name : Optional Text)
-    ->  \(data-dir : List F.Volume.Type)
     ->  \(input-preview : InputPreview)
+    ->  \(data-dir : List F.Volume.Type)
     ->  F.KubernetesComponent::{
         , Service = Some (F.mkService app-name "preview" "preview" 80)
         , Deployment = Some
@@ -19,7 +18,7 @@ in      \(app-name : Text)
                 , data-dir = data-dir
                 , container = Kubernetes.Container::{
                   , name = "preview"
-                  , image = image-name
+                  , image = input-preview.image
                   , imagePullPolicy = Some "IfNotPresent"
                   , ports = Some
                     [ Kubernetes.ContainerPort::{
