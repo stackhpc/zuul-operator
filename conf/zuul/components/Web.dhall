@@ -2,8 +2,10 @@ let Kubernetes = ../../Kubernetes.dhall
 
 let F = ../functions.dhall
 
+let InputWeb = (../input.dhall).Web.Type
+
 in      \(app-name : Text)
-    ->  \(image-name : Optional Text)
+    ->  \(input-web : InputWeb)
     ->  \(data-dir : List F.Volume.Type)
     ->  \(volumes : List F.Volume.Type)
     ->  \(env : List Kubernetes.EnvVar.Type)
@@ -19,7 +21,7 @@ in      \(app-name : Text)
                 , volumes = volumes
                 , container = Kubernetes.Container::{
                   , name = "web"
-                  , image = image-name
+                  , image = input-web.image
                   , args = Some [ "zuul-web", "-d" ]
                   , imagePullPolicy = Some "IfNotPresent"
                   , ports = Some

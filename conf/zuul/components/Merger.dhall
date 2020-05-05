@@ -2,8 +2,10 @@ let Kubernetes = ../../Kubernetes.dhall
 
 let F = ../functions.dhall
 
+let InputMerger = (../input.dhall).Merger.Type
+
 in      \(app-name : Text)
-    ->  \(image-name : Optional Text)
+    ->  \(input-merger : InputMerger)
     ->  \(data-dir : List F.Volume.Type)
     ->  \(volumes : List F.Volume.Type)
     ->  \(env : List Kubernetes.EnvVar.Type)
@@ -18,7 +20,7 @@ in      \(app-name : Text)
                 , volumes = volumes
                 , container = Kubernetes.Container::{
                   , name = "merger"
-                  , image = image-name
+                  , image = input-merger.image
                   , args = Some [ "zuul-merger", "-d" ]
                   , imagePullPolicy = Some "IfNotPresent"
                   , env = Some env
