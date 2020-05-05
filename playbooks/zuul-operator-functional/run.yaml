@@ -134,6 +134,8 @@
               key: kube.config
           registry:
             count: 1
+          preview:
+            count: 1
           withCertManager: "{{ withCertManager }}"
 
     - name: Wait maximum 4 minutes for the scheduler deployment
@@ -171,6 +173,18 @@
     - name: Look for the cert-manager issuer
       command: kubectl get Issuers zuul-ca -o yaml
       when: withCertManager
+
+    - name: Test the preview service
+      block:
+        - name: Get preview service ip
+          command: kubectl get svc preview -o "jsonpath={.spec.clusterIP}"
+          register: _preview_ip
+
+        - name: Connect to the preview service
+          uri:
+            url: "http://{{ _preview_ip.stdout_lines[0] }}"
+            method: POST
+            status_code: 403
 
     - name: Test the registry
       block:

@@ -97,6 +97,10 @@ let Schemas =
               , public-url = None Text
               }
           }
+      , Preview =
+          { Type = { image : Optional Text, count : Optional Natural }
+          , default = { image = None Text, count = None Natural }
+          }
       , Launcher =
           { Type = { image : Optional Text, config : UserSecret }
           , default.image = None Text
@@ -143,6 +147,7 @@ let Input =
           , web : Schemas.Web.Type
           , scheduler : Schemas.Scheduler.Type
           , registry : Schemas.Registry.Type
+          , preview : Schemas.Preview.Type
           , launcher : Schemas.Launcher.Type
           , database : Optional UserSecret
           , zookeeper : Optional UserSecret
@@ -159,6 +164,7 @@ let Input =
           , web = Schemas.Web.default
           , scheduler = Schemas.Scheduler.default
           , registry = Schemas.Registry.default
+          , preview = Schemas.Preview.default
           , executor = Schemas.Executor.default
           , launcher = Schemas.Launcher.default
           , connections = Schemas.Connections.default

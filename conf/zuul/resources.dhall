@@ -390,6 +390,12 @@ in      \(input : Input)
                             zuul-data-dir
                             [ etc-zuul-registry ]
                             input.registry
+                      , Preview =
+                          ./components/Preview.dhall
+                            input.name
+                            (zuul-image "preview")
+                            zuul-data-dir
+                            input.preview
                       }
               , Nodepool =
                   let nodepool-image =
@@ -586,6 +592,7 @@ in      \(input : Input)
                           # mkUnion Components.Zuul.Web
                           # mkUnion Components.Zuul.Merger
                           # mkUnion Components.Zuul.Registry
+                          # mkUnion Components.Zuul.Preview
                           # mkUnion Components.Nodepool.Launcher
                         )
                 }
