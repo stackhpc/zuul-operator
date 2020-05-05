@@ -149,6 +149,7 @@ let Input =
           , externalConfig : Schemas.ExternalConfigs.Type
           , connections : Schemas.Connections.Type
           , jobVolumes : Optional (List JobVolume)
+          , withCertManager : Bool
           }
       , default =
           { database = None UserSecret
@@ -162,6 +163,7 @@ let Input =
           , launcher = Schemas.Launcher.default
           , connections = Schemas.Connections.default
           , jobVolumes = None (List JobVolume)
+          , withCertManager = True
           }
       }
 

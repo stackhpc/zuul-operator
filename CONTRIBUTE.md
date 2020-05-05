@@ -100,5 +100,5 @@ ansible-playbook -e use_local_role=true ...
 To wipe your namespace run this command:
 
 ```bash
-kubectl delete $(for obj in statefulset deployment service secret; do kubectl get $obj -o name; done)
+kubectl delete $(for obj in issuer certificate statefulset deployment service secret; do kubectl get $obj -o name; done)
 ```

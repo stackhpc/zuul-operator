@@ -98,6 +98,7 @@
                     hostPath:
                       path: /run/dbus
                       type: DirectoryOrCreate
+              withCertManager: "{{ withCertManager }}"
 
     - name: ensure a job is running
       when: skip_check is not defined

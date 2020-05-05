@@ -3,6 +3,7 @@
 ---
 namespace: default
 zuul_app_path: "/home/fedora/src/opendev.org/zuul/zuul-operator/conf/zuul"
+withCertManager: true
 zuul:
   projects:
     'opendev.org/zuul/zuul-operator':
