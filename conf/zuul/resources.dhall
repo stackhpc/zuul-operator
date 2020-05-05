@@ -41,206 +41,10 @@ let JobVolume = Schemas.JobVolume.Type
 
 let UserSecret = Schemas.UserSecret.Type
 
-let EnvSecret = { name : Text, secret : Text, key : Text }
-
-let File = { path : Text, content : Text }
-
-let Volume =
-      { Type = { name : Text, dir : Text, files : List File }
-      , default.files = [] : List File
-      }
-
-let {- A high level description of a component such as the scheduler or the launcher
-    -} Component =
-      { Type =
-          { name : Text
-          , count : Natural
-          , container : Kubernetes.Container.Type
-          , data-dir : List Volume.Type
-          , volumes : List Volume.Type
-          , extra-volumes : List Kubernetes.Volume.Type
-          , claim-size : Natural
-          }
-      , default =
-          { data-dir = [] : List Volume.Type
-          , volumes = [] : List Volume.Type
-          , extra-volumes = [] : List Kubernetes.Volume.Type
-          , claim-size = 0
-          }
-      }
-
-let {- The Kubernetes resources of a Component
-    -} KubernetesComponent =
-      { Type =
-          { Service : Optional Kubernetes.Service.Type
-          , Deployment : Optional Kubernetes.Deployment.Type
-          , StatefulSet : Optional Kubernetes.StatefulSet.Type
-          }
-      , default =
-          { Service = None Kubernetes.Service.Type
-          , Deployment = None Kubernetes.Deployment.Type
-          , StatefulSet = None Kubernetes.StatefulSet.Type
-          }
-      }
+let Volume = F.Volume
 
 in      \(input : Input)
-    ->  let mkVolumeEmptyDir =
-              Prelude.List.map
-                Volume.Type
-                Kubernetes.Volume.Type
-                (     \(volume : Volume.Type)
-                  ->  Kubernetes.Volume::{
-                      , name = volume.name
-                      , emptyDir = Some Kubernetes.EmptyDirVolumeSource::{=}
-                      }
-                )
-
-        let mkVolumeSecret =
-              Prelude.List.map
-                Volume.Type
-                Kubernetes.Volume.Type
-                (     \(volume : Volume.Type)
-                  ->  Kubernetes.Volume::{
-                      , name = volume.name
-                      , secret = Some Kubernetes.SecretVolumeSource::{
-                        , secretName = Some volume.name
-                        , defaultMode = Some 256
-                        }
-                      }
-                )
-
-        let mkPodTemplateSpec =
-                  \(component : Component.Type)
-              ->  \(labels : F.Labels)
-              ->  Kubernetes.PodTemplateSpec::{
-                  , metadata = F.mkObjectMeta component.name labels
-                  , spec = Some Kubernetes.PodSpec::{
-                    , volumes = Some
-                        (   mkVolumeSecret component.volumes
-                          # mkVolumeEmptyDir component.data-dir
-                          # component.extra-volumes
-                        )
-                    , containers = [ component.container ]
-                    , automountServiceAccountToken = Some False
-                    }
-                  }
-
-        let mkStatefulSet =
-                  \(component : Component.Type)
-              ->  let labels = F.mkComponentLabel input.name component.name
-
-                  let component-name = input.name ++ "-" ++ component.name
-
-                  let claim =
-                              if Natural/isZero component.claim-size
-
-                        then  [] : List Kubernetes.PersistentVolumeClaim.Type
-
-                        else  [ Kubernetes.PersistentVolumeClaim::{
-                                , apiVersion = ""
-                                , kind = ""
-                                , metadata = Kubernetes.ObjectMeta::{
-                                  , name = component-name
-                                  }
-                                , spec = Some Kubernetes.PersistentVolumeClaimSpec::{
-                                  , accessModes = Some [ "ReadWriteOnce" ]
-                                  , resources = Some Kubernetes.ResourceRequirements::{
-                                    , requests = Some
-                                        ( toMap
-                                            { storage =
-                                                    Natural/show
-                                                      component.claim-size
-                                                ++  "Gi"
-                                            }
-                                        )
-                                    }
-                                  }
-                                }
-                              ]
-
-                  in  Kubernetes.StatefulSet::{
-                      , metadata = F.mkObjectMeta component-name labels
-                      , spec = Some Kubernetes.StatefulSetSpec::{
-                        , serviceName = component.name
-                        , replicas = Some component.count
-                        , selector = F.mkSelector labels
-                        , template = mkPodTemplateSpec component labels
-                        , volumeClaimTemplates = Some claim
-                        }
-                      }
-
-        let mkDeployment =
-                  \(component : Component.Type)
-              ->  let labels = F.mkComponentLabel input.name component.name
-
-                  let component-name = input.name ++ "-" ++ component.name
-
-                  in  Kubernetes.Deployment::{
-                      , metadata = F.mkObjectMeta component-name labels
-                      , spec = Some Kubernetes.DeploymentSpec::{
-                        , replicas = Some component.count
-                        , selector = F.mkSelector labels
-                        , template = mkPodTemplateSpec component labels
-                        }
-                      }
-
-        let mkEnvVarValue =
-              Prelude.List.map
-                F.Label
-                Kubernetes.EnvVar.Type
-                (     \(env : F.Label)
-                  ->  Kubernetes.EnvVar::{
-                      , name = env.mapKey
-                      , value = Some env.mapValue
-                      }
-                )
-
-        let mkEnvVarSecret =
-              Prelude.List.map
-                EnvSecret
-                Kubernetes.EnvVar.Type
-                (     \(env : EnvSecret)
-                  ->  Kubernetes.EnvVar::{
-                      , name = env.name
-                      , valueFrom = Some Kubernetes.EnvVarSource::{
-                        , secretKeyRef = Some Kubernetes.SecretKeySelector::{
-                          , key = env.key
-                          , name = Some env.secret
-                          }
-                        }
-                      }
-                )
-
-        let mkVolumeMount =
-              Prelude.List.map
-                Volume.Type
-                Kubernetes.VolumeMount.Type
-                (     \(volume : Volume.Type)
-                  ->  Kubernetes.VolumeMount::{
-                      , name = volume.name
-                      , mountPath = volume.dir
-                      }
-                )
-
-        let mkSecret =
-                  \(volume : Volume.Type)
-              ->  Kubernetes.Resource.Secret
-                    Kubernetes.Secret::{
-                    , metadata = Kubernetes.ObjectMeta::{ name = volume.name }
-                    , stringData = Some
-                        ( Prelude.List.map
-                            File
-                            { mapKey : Text, mapValue : Text }
-                            (     \(config : File)
-                              ->  { mapKey = config.path
-                                  , mapValue = config.content
-                                  }
-                            )
-                            volume.files
-                        )
-                    }
-
-        let zk-conf =
+    ->  let zk-conf =
               merge
                 { None =
                   [ Volume::{
@@ -309,7 +113,7 @@ in      \(input : Input)
                 { None = [] : List Kubernetes.EnvVar.Type
                 , Some =
                         \(some : UserSecret)
-                    ->  mkEnvVarSecret
+                    ->  F.mkEnvVarSecret
                           [ { name = "ZUUL_ZK_HOSTS"
                             , secret = some.secretName
                             , key = F.defaultText some.key "hosts"
@@ -320,7 +124,7 @@ in      \(input : Input)
 
         let db-internal-password-env =
                   \(env-name : Text)
-              ->  mkEnvVarSecret
+              ->  F.mkEnvVarSecret
                     [ { name = env-name
                       , secret = "${input.name}-database-password"
                       , key = "password"
@@ -390,12 +194,13 @@ in      \(input : Input)
 
                   in  { Database =
                           merge
-                            { None = KubernetesComponent::{
+                            { None = F.KubernetesComponent::{
                               , Service = Some
                                   (F.mkService input.name "db" "pg" 5432)
                               , StatefulSet = Some
-                                  ( mkStatefulSet
-                                      Component::{
+                                  ( F.mkStatefulSet
+                                      input.name
+                                      F.Component::{
                                       , name = "db"
                                       , count = 1
                                       , data-dir = db-volumes
@@ -412,7 +217,7 @@ in      \(input : Input)
                                             }
                                           ]
                                         , env = Some
-                                            (   mkEnvVarValue
+                                            (   F.mkEnvVarValue
                                                   ( toMap
                                                       { POSTGRES_USER = "zuul"
                                                       , PGDATA =
@@ -423,24 +228,25 @@ in      \(input : Input)
                                                   "POSTGRES_PASSWORD"
                                             )
                                         , volumeMounts = Some
-                                            (mkVolumeMount db-volumes)
+                                            (F.mkVolumeMount db-volumes)
                                         }
                                       }
                                   )
                               }
                             , Some =
                                     \(some : UserSecret)
-                                ->  KubernetesComponent.default
+                                ->  F.KubernetesComponent.default
                             }
                             input.database
                       , ZooKeeper =
                           merge
-                            { None = KubernetesComponent::{
+                            { None = F.KubernetesComponent::{
                               , Service = Some
                                   (F.mkService input.name "zk" "zk" 2281)
                               , StatefulSet = Some
-                                  ( mkStatefulSet
-                                      Component::{
+                                  ( F.mkStatefulSet
+                                      input.name
+                                      F.Component::{
                                       , name = "zk"
                                       , count = 1
                                       , data-dir = zk-volumes
@@ -467,7 +273,7 @@ in      \(input : Input)
                                             }
                                           ]
                                         , volumeMounts = Some
-                                            ( mkVolumeMount
+                                            ( F.mkVolumeMount
                                                 (   zk-volumes
                                                   # zk-conf
                                                   # zk-client-conf
@@ -479,7 +285,7 @@ in      \(input : Input)
                               }
                             , Some =
                                     \(some : UserSecret)
-                                ->  KubernetesComponent.default
+                                ->  F.KubernetesComponent.default
                             }
                             input.zookeeper
                       }
@@ -488,14 +294,14 @@ in      \(input : Input)
                         \(name : Text) -> Some (image ("zuul-" ++ name))
 
                   let zuul-env =
-                        mkEnvVarValue (toMap { HOME = "/var/lib/zuul" })
+                        F.mkEnvVarValue (toMap { HOME = "/var/lib/zuul" })
 
                   let db-secret-env =
                         merge
                           { None = db-internal-password-env "ZUUL_DB_PASSWORD"
                           , Some =
                                   \(some : UserSecret)
-                              ->  mkEnvVarSecret
+                              ->  F.mkEnvVarSecret
                                     [ { name = "ZUUL_DB_URI"
                                       , secret = some.secretName
                                       , key = F.defaultText some.key "db_uri"
@@ -506,7 +312,7 @@ in      \(input : Input)
 
                   let {- executor and merger do not need database info, but they fail to parse config without the env variable
                       -} db-nosecret-env =
-                        mkEnvVarValue (toMap { ZUUL_DB_PASSWORD = "unused" })
+                        F.mkEnvVarValue (toMap { ZUUL_DB_PASSWORD = "unused" })
 
                   let zuul-data-dir =
                         [ Volume::{ name = "zuul-data", dir = "/var/lib/zuul" }
@@ -541,12 +347,13 @@ in      \(input : Input)
 
                   let executor-volumes = zuul-volumes # [ executor-ssh-key ]
 
-                  in  { Scheduler = KubernetesComponent::{
+                  in  { Scheduler = F.KubernetesComponent::{
                         , Service = Some
                             (F.mkService input.name "scheduler" "gearman" 4730)
                         , StatefulSet = Some
-                            ( mkStatefulSet
-                                Component::{
+                            ( F.mkStatefulSet
+                                input.name
+                                F.Component::{
                                 , name = "scheduler"
                                 , count = 1
                                 , data-dir = zuul-data-dir
@@ -569,19 +376,20 @@ in      \(input : Input)
                                         # zk-hosts-secret-env
                                       )
                                   , volumeMounts = Some
-                                      ( mkVolumeMount
+                                      ( F.mkVolumeMount
                                           (scheduler-volumes # zuul-data-dir)
                                       )
                                   }
                                 }
                             )
                         }
-                      , Executor = KubernetesComponent::{
+                      , Executor = F.KubernetesComponent::{
                         , Service = Some
                             (F.mkService input.name "executor" "finger" 7900)
                         , StatefulSet = Some
-                            ( mkStatefulSet
-                                Component::{
+                            ( F.mkStatefulSet
+                                input.name
+                                F.Component::{
                                 , name = "executor"
                                 , count = 1
                                 , data-dir = zuul-data-dir
@@ -623,7 +431,7 @@ in      \(input : Input)
                                               input.jobVolumes
 
                                       in  Some
-                                            ( mkVolumeMount
+                                            ( F.mkVolumeMount
                                                 (   executor-volumes
                                                   # zuul-data-dir
                                                   # job-volumes-mount
@@ -636,12 +444,13 @@ in      \(input : Input)
                                 }
                             )
                         }
-                      , Web = KubernetesComponent::{
+                      , Web = F.KubernetesComponent::{
                         , Service = Some
                             (F.mkService input.name "web" "api" 9000)
                         , Deployment = Some
-                            ( mkDeployment
-                                Component::{
+                            ( F.mkDeployment
+                                input.name
+                                F.Component::{
                                 , name = "web"
                                 , count = 1
                                 , data-dir = zuul-data-dir
@@ -663,17 +472,18 @@ in      \(input : Input)
                                         # zk-hosts-secret-env
                                       )
                                   , volumeMounts = Some
-                                      ( mkVolumeMount
+                                      ( F.mkVolumeMount
                                           (web-volumes # zuul-data-dir)
                                       )
                                   }
                                 }
                             )
                         }
-                      , Merger = KubernetesComponent::{
+                      , Merger = F.KubernetesComponent::{
                         , Deployment = Some
-                            ( mkDeployment
-                                Component::{
+                            ( F.mkDeployment
+                                input.name
+                                F.Component::{
                                 , name = "merger"
                                 , count = 1
                                 , data-dir = zuul-data-dir
@@ -685,7 +495,7 @@ in      \(input : Input)
                                   , imagePullPolicy = Some "IfNotPresent"
                                   , env = Some (zuul-env # db-nosecret-env)
                                   , volumeMounts = Some
-                                      ( mkVolumeMount
+                                      ( F.mkVolumeMount
                                           (merger-volumes # zuul-data-dir)
                                       )
                                   }
@@ -702,10 +512,10 @@ in      \(input : Input)
                                 ]
 
                           let registry-env =
-                                mkEnvVarSecret
+                                F.mkEnvVarSecret
                                   ( Prelude.List.map
                                       Text
-                                      EnvSecret
+                                      F.EnvSecret
                                       (     \(key : Text)
                                         ->  { name = "ZUUL_REGISTRY_${key}"
                                             , key = key
@@ -716,7 +526,7 @@ in      \(input : Input)
                                       [ "secret", "username", "password" ]
                                   )
 
-                          in  KubernetesComponent::{
+                          in  F.KubernetesComponent::{
                               , Service = Some
                                   ( F.mkService
                                       input.name
@@ -725,8 +535,9 @@ in      \(input : Input)
                                       9000
                                   )
                               , StatefulSet = Some
-                                  ( mkStatefulSet
-                                      Component::{
+                                  ( F.mkStatefulSet
+                                      input.name
+                                      F.Component::{
                                       , name = "registry"
                                       , count =
                                           F.defaultNat input.registry.count 0
@@ -754,7 +565,7 @@ in      \(input : Input)
                                           ]
                                         , env = Some registry-env
                                         , volumeMounts = Some
-                                            ( mkVolumeMount
+                                            ( F.mkVolumeMount
                                                 (   registry-volumes
                                                   # zuul-data-dir
                                                 )
@@ -808,7 +619,7 @@ in      \(input : Input)
                           input.externalConfig.kubernetes
 
                   let nodepool-env =
-                        mkEnvVarValue
+                        F.mkEnvVarValue
                           ( toMap
                               { HOME = "/var/lib/nodepool"
                               , OS_CLIENT_CONFIG_FILE =
@@ -833,10 +644,11 @@ in      \(input : Input)
                   let shard-config =
                         "cat /etc/nodepool/nodepool.yaml /etc/nodepool-config/*.yaml > /var/lib/nodepool/config.yaml; "
 
-                  in  { Launcher = KubernetesComponent::{
+                  in  { Launcher = F.KubernetesComponent::{
                         , Deployment = Some
-                            ( mkDeployment
-                                Component::{
+                            ( F.mkDeployment
+                                input.name
+                                F.Component::{
                                 , name = "launcher"
                                 , count = 1
                                 , data-dir = nodepool-data-dir
@@ -853,7 +665,7 @@ in      \(input : Input)
                                   , imagePullPolicy = Some "IfNotPresent"
                                   , env = Some nodepool-env
                                   , volumeMounts = Some
-                                      ( mkVolumeMount
+                                      ( F.mkVolumeMount
                                           (nodepool-volumes # nodepool-data-dir)
                                       )
                                   }
@@ -863,10 +675,28 @@ in      \(input : Input)
                       }
               }
 
+        let mkSecret =
+                  \(volume : Volume.Type)
+              ->  Kubernetes.Resource.Secret
+                    Kubernetes.Secret::{
+                    , metadata = Kubernetes.ObjectMeta::{ name = volume.name }
+                    , stringData = Some
+                        ( Prelude.List.map
+                            { path : Text, content : Text }
+                            { mapKey : Text, mapValue : Text }
+                            (     \(config : { path : Text, content : Text })
+                              ->  { mapKey = config.path
+                                  , mapValue = config.content
+                                  }
+                            )
+                            volume.files
+                        )
+                    }
+
         let {- This function transforms the different types into the Kubernetes.Resource
                union to enable using them inside a single List array
             -} mkUnion =
-                  \(component : KubernetesComponent.Type)
+                  \(component : F.KubernetesComponent.Type)
               ->  let empty = [] : List Kubernetes.Resource
 
                   in    merge

@@ -3,9 +3,11 @@ let Prelude = ../Prelude.dhall
 
 let Kubernetes = ../Kubernetes.dhall
 
-let JobVolume = (./input.dhall).JobVolume.Type
+let Schemas = ./input.dhall
 
-let UserSecret = (./input.dhall).UserSecret.Type
+let JobVolume = Schemas.JobVolume.Type
+
+let UserSecret = Schemas.UserSecret.Type
 
 let {- This methods process the optional input.job-volumes list. It takes:
     * the desired output type
@@ -95,6 +97,187 @@ let mkService =
                 }
               }
 
+let EnvSecret = { name : Text, secret : Text, key : Text }
+
+let File = { path : Text, content : Text }
+
+let Volume =
+      { Type = { name : Text, dir : Text, files : List File }
+      , default.files = [] : List File
+      }
+
+let {- A high level description of a component such as the scheduler or the launcher
+    -} Component =
+      { Type =
+          { name : Text
+          , count : Natural
+          , container : Kubernetes.Container.Type
+          , data-dir : List Volume.Type
+          , volumes : List Volume.Type
+          , extra-volumes : List Kubernetes.Volume.Type
+          , claim-size : Natural
+          }
+      , default =
+          { data-dir = [] : List Volume.Type
+          , volumes = [] : List Volume.Type
+          , extra-volumes = [] : List Kubernetes.Volume.Type
+          , claim-size = 0
+          }
+      }
+
+let {- The Kubernetes resources of a Component
+    -} KubernetesComponent =
+      { Type =
+          { Service : Optional Kubernetes.Service.Type
+          , Deployment : Optional Kubernetes.Deployment.Type
+          , StatefulSet : Optional Kubernetes.StatefulSet.Type
+          }
+      , default =
+          { Service = None Kubernetes.Service.Type
+          , Deployment = None Kubernetes.Deployment.Type
+          , StatefulSet = None Kubernetes.StatefulSet.Type
+          }
+      }
+
+let mkVolumeEmptyDir =
+      Prelude.List.map
+        Volume.Type
+        Kubernetes.Volume.Type
+        (     \(volume : Volume.Type)
+          ->  Kubernetes.Volume::{
+              , name = volume.name
+              , emptyDir = Some Kubernetes.EmptyDirVolumeSource::{=}
+              }
+        )
+
+let mkVolumeSecret =
+      Prelude.List.map
+        Volume.Type
+        Kubernetes.Volume.Type
+        (     \(volume : Volume.Type)
+          ->  Kubernetes.Volume::{
+              , name = volume.name
+              , secret = Some Kubernetes.SecretVolumeSource::{
+                , secretName = Some volume.name
+                , defaultMode = Some 256
+                }
+              }
+        )
+
+let mkPodTemplateSpec =
+          \(component : Component.Type)
+      ->  \(labels : Labels)
+      ->  Kubernetes.PodTemplateSpec::{
+          , metadata = mkObjectMeta component.name labels
+          , spec = Some Kubernetes.PodSpec::{
+            , volumes = Some
+                (   mkVolumeSecret component.volumes
+                  # mkVolumeEmptyDir component.data-dir
+                  # component.extra-volumes
+                )
+            , containers = [ component.container ]
+            , automountServiceAccountToken = Some False
+            }
+          }
+
+let mkStatefulSet =
+          \(app-name : Text)
+      ->  \(component : Component.Type)
+      ->  let labels = mkComponentLabel app-name component.name
+
+          let component-name = app-name ++ "-" ++ component.name
+
+          let claim =
+                      if Natural/isZero component.claim-size
+
+                then  [] : List Kubernetes.PersistentVolumeClaim.Type
+
+                else  [ Kubernetes.PersistentVolumeClaim::{
+                        , apiVersion = ""
+                        , kind = ""
+                        , metadata = Kubernetes.ObjectMeta::{
+                          , name = component-name
+                          }
+                        , spec = Some Kubernetes.PersistentVolumeClaimSpec::{
+                          , accessModes = Some [ "ReadWriteOnce" ]
+                          , resources = Some Kubernetes.ResourceRequirements::{
+                            , requests = Some
+                                ( toMap
+                                    { storage =
+                                            Natural/show component.claim-size
+                                        ++  "Gi"
+                                    }
+                                )
+                            }
+                          }
+                        }
+                      ]
+
+          in  Kubernetes.StatefulSet::{
+              , metadata = mkObjectMeta component-name labels
+              , spec = Some Kubernetes.StatefulSetSpec::{
+                , serviceName = component.name
+                , replicas = Some component.count
+                , selector = mkSelector labels
+                , template = mkPodTemplateSpec component labels
+                , volumeClaimTemplates = Some claim
+                }
+              }
+
+let mkDeployment =
+          \(app-name : Text)
+      ->  \(component : Component.Type)
+      ->  let labels = mkComponentLabel app-name component.name
+
+          let component-name = app-name ++ "-" ++ component.name
+
+          in  Kubernetes.Deployment::{
+              , metadata = mkObjectMeta component-name labels
+              , spec = Some Kubernetes.DeploymentSpec::{
+                , replicas = Some component.count
+                , selector = mkSelector labels
+                , template = mkPodTemplateSpec component labels
+                }
+              }
+
+let mkEnvVarValue =
+      Prelude.List.map
+        Label
+        Kubernetes.EnvVar.Type
+        (     \(env : Label)
+          ->  Kubernetes.EnvVar::{
+              , name = env.mapKey
+              , value = Some env.mapValue
+              }
+        )
+
+let mkEnvVarSecret =
+      Prelude.List.map
+        EnvSecret
+        Kubernetes.EnvVar.Type
+        (     \(env : EnvSecret)
+          ->  Kubernetes.EnvVar::{
+              , name = env.name
+              , valueFrom = Some Kubernetes.EnvVarSource::{
+                , secretKeyRef = Some Kubernetes.SecretKeySelector::{
+                  , key = env.key
+                  , name = Some env.secret
+                  }
+                }
+              }
+        )
+
+let mkVolumeMount =
+      Prelude.List.map
+        Volume.Type
+        Kubernetes.VolumeMount.Type
+        (     \(volume : Volume.Type)
+          ->  Kubernetes.VolumeMount::{
+              , name = volume.name
+              , mountPath = volume.dir
+              }
+        )
+
 in  { defaultNat = defaultNat
     , defaultText = defaultText
     , defaultKey = defaultKey
@@ -104,6 +287,15 @@ in  { defaultNat = defaultNat
     , mkObjectMeta = mkObjectMeta
     , mkSelector = mkSelector
     , mkService = mkService
+    , mkDeployment = mkDeployment
+    , mkStatefulSet = mkStatefulSet
+    , mkVolumeMount = mkVolumeMount
+    , mkEnvVarValue = mkEnvVarValue
+    , mkEnvVarSecret = mkEnvVarSecret
+    , EnvSecret = EnvSecret
     , Label = Label
     , Labels = Labels
+    , Volume = Volume
+    , Component = Component
+    , KubernetesComponent = KubernetesComponent
     }
