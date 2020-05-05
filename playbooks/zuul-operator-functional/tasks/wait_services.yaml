@@ -1,0 +1,31 @@
+- name: Wait maximum 4 minutes for the scheduler deployment
+  shell: |
+    for idx in $(seq 24); do
+      date;
+      kubectl get statefulset zuul-scheduler 2> /dev/null && break || :
+      sleep 10;
+    done
+
+- name: Wait for scheduler deployment
+  command: timeout 10m kubectl rollout status statefulset/zuul-scheduler
+
+- name: Wait 8 minutes for scheduler to settle
+  command: kubectl logs pod/zuul-scheduler-0
+  register: _scheduler_log
+  until: "'Full reconfiguration complete' in _scheduler_log.stdout"
+  delay: 10
+  retries: 48
+
+- name: Wait for executor deployment
+  command: timeout 10m kubectl rollout status statefulset/zuul-executor
+
+- name: Wait 8 minutes for launcher to settle
+  command: kubectl logs deployment/zuul-launcher
+  register: _launcher_log
+  until: "'Active requests' in _launcher_log.stdout"
+  delay: 10
+  retries: 48
+
+- name: Wait an extra 2 minutes for the services to settle
+  pause:
+    minutes: 2

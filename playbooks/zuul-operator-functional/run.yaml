@@ -20,93 +20,11 @@
       args:
         chdir: "{{ zuul.projects['opendev.org/zuul/zuul-operator'].src_dir }}"
 
+    - name: Create required secret
+      include_tasks: ./tasks/create_test_secrets.yaml
+
     - name: Wait for operator deployment
       command: timeout 8m kubectl rollout status deployment/zuul-operator
-
-    - name: Generate executor ssh key
-      command: ssh-keygen -t rsa -m PEM -N '' -f 'id_rsa' -q -C 'zuul-executor'
-      args:
-        creates: id_rsa
-
-    # Note: Using lookup(file) is somehow failing with 'NoneType' object has no attribute 'startswith'
-    - name: Read generated ssh key
-      command: cat id_rsa
-      register: _ssh_key
-
-    - name: Read generated kubectl configuration
-      command: |
-        sed -e 's#/home/zuul/.minikube/profiles/minikube/#/etc/nodepool-kubernetes/#g'
-            -e 's#/home/zuul/.minikube/#/etc/nodepool-kubernetes/#g'
-            ~/.kube/config
-      register: _kube_config
-
-    - name: Read client cert
-      command: cat ~/.minikube/profiles/minikube/client.crt
-      register: _kube_cert
-
-    - name: Read client key
-      command: cat ~/.minikube/profiles/minikube/client.key
-      register: _kube_key
-
-    - name: Read ca cert
-      command: cat ~/.minikube/ca.crt
-      register: _kube_ca
-
-    - name: Read current context name
-      command: kubectl config current-context
-      register: _kube_context
-
-    - name: Setup user provided secrets
-      k8s:
-        namespace: "{{ namespace }}"
-        definition:
-          apiVersion: v1
-          kind: Secret
-          metadata:
-            name: "{{ item.name }}"
-          stringData: "{{ item.data }}"
-      loop:
-        - name: executor-ssh-key
-          data:
-            id_rsa: "{{ _ssh_key.stdout }}"
-
-        - name: zuul-yaml-conf
-          data:
-            main.yaml: |
-              - tenant:
-                  name: local
-                  source:
-                    opendev.org:
-                      config-projects:
-                        - zuul/zuul-base-jobs
-                      untrusted-projects:
-                        - zuul/zuul-jobs
-
-        - name: nodepool-yaml-conf
-          data:
-            nodepool.yaml: |
-              labels:
-                - name: pod-fedora-31
-                  min-ready: 1
-              providers:
-                - name: kube-cluster
-                  driver: kubernetes
-                  context: {{ _kube_context.stdout }}
-                  max-pods: 15
-                  pools:
-                  - name: default
-                    labels:
-                      - name: pod-fedora-31
-                        type: pod
-                        image: docker.io/fedora:31
-                        python-path: /bin/python3
-
-        - name: nodepool-kube-config
-          data:
-            kube.config: "{{ _kube_config.stdout }}"
-            client.crt: "{{ _kube_cert.stdout }}"
-            client.key: "{{ _kube_key.stdout }}"
-            ca.crt: "{{ _kube_ca.stdout }}"
 
     - name: Deploy CR
       include_tasks: tasks/apply_cr.yaml
@@ -138,74 +56,15 @@
             count: 1
           withCertManager: "{{ withCertManager }}"
 
-    - name: Wait maximum 4 minutes for the scheduler deployment
-      shell: |
-        for idx in $(seq 24); do
-          date;
-          kubectl get statefulset zuul-scheduler 2> /dev/null && break || :
-          sleep 10;
-        done
+    - name: Wait for services
+      include_tasks: ./tasks/wait_services.yaml
 
-    - name: Wait for scheduler deployment
-      command: timeout 10m kubectl rollout status statefulset/zuul-scheduler
-
-    - name: Wait 8 minutes for scheduler to settle
-      command: kubectl logs pod/zuul-scheduler-0
-      register: _scheduler_log
-      until: "'Full reconfiguration complete' in _scheduler_log.stdout"
-      delay: 10
-      retries: 48
-
-    - name: Wait for executor deployment
-      command: timeout 10m kubectl rollout status statefulset/zuul-executor
-
-    - name: Wait 8 minutes for launcher to settle
-      command: kubectl logs deployment/zuul-launcher
-      register: _launcher_log
-      until: "'Active requests' in _launcher_log.stdout"
-      delay: 10
-      retries: 48
-
-    - name: Wait an extra 2 minutes for the services to settle
-      pause:
-        minutes: 2
-
-    - name: Look for the cert-manager issuer
-      command: kubectl get Issuers zuul-ca -o yaml
+    - name: Test the cert-manager
+      include_tasks: ./tasks/test_cert_manager.yaml
       when: withCertManager
 
-    - name: Test the preview service
-      block:
-        - name: Get preview service ip
-          command: kubectl get svc preview -o "jsonpath={.spec.clusterIP}"
-          register: _preview_ip
-
-        - name: Connect to the preview service
-          uri:
-            url: "http://{{ _preview_ip.stdout_lines[0] }}"
-            method: POST
-            status_code: 403
+    - name: Test the preview
+      include_tasks: ./tasks/test_preview.yaml
 
     - name: Test the registry
-      block:
-        - name: Get registry service ip
-          command: kubectl get svc registry -o "jsonpath={.spec.clusterIP}"
-          register: _registry_ip
-
-        - name: Add registry to /etc/hosts
-          become: yes
-          lineinfile:
-            path: /etc/hosts
-            regexp: "^.* registry$"
-            line: "{{ _registry_ip.stdout_lines[0] }} registry"
-
-        - name: Get registry password
-          command: kubectl get secret zuul-registry-user-rw -o "jsonpath={.data.password}"
-          register: _registry_password
-
-        - name: Test registry login
-          command: >
-            podman login
-              --tls-verify=false registry:9000
-              -u zuul
-              -p "{{ _registry_password.stdout_lines[0] | b64decode }}"
+      include_tasks: ./tasks/test_registry.yaml

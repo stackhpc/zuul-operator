@@ -1,0 +1,9 @@
+- name: Get preview service ip
+  command: kubectl get svc preview -o "jsonpath={.spec.clusterIP}"
+  register: _preview_ip
+
+- name: Connect to the preview service
+  uri:
+    url: "http://{{ _preview_ip.stdout_lines[0] }}"
+    method: POST
+    status_code: 403

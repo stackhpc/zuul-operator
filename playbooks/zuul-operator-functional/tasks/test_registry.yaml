@@ -1,0 +1,21 @@
+- name: Get registry service ip
+  command: kubectl get svc registry -o "jsonpath={.spec.clusterIP}"
+  register: _registry_ip
+
+- name: Add registry to /etc/hosts
+  become: yes
+  lineinfile:
+    path: /etc/hosts
+    regexp: "^.* registry$"
+    line: "{{ _registry_ip.stdout_lines[0] }} registry"
+
+- name: Get registry password
+  command: kubectl get secret zuul-registry-user-rw -o "jsonpath={.data.password}"
+  register: _registry_password
+
+- name: Test registry login
+  command: >
+    podman login
+      --tls-verify=false registry:9000
+      -u zuul
+      -p "{{ _registry_password.stdout_lines[0] | b64decode }}"

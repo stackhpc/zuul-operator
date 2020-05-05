@@ -1,0 +1,2 @@
+- name: Look for the cert-manager issuer
+  command: kubectl get Issuers zuul-ca -o yaml
