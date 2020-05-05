@@ -142,6 +142,7 @@ let Schemas =
 let Input =
       { Type =
           { name : Text
+          , imagePrefix : Optional Text
           , merger : Schemas.Merger.Type
           , executor : Schemas.Executor.Type
           , web : Schemas.Web.Type
@@ -157,7 +158,8 @@ let Input =
           , withCertManager : Bool
           }
       , default =
-          { database = None UserSecret
+          { imagePrefix = None Text
+          , database = None UserSecret
           , zookeeper = None UserSecret
           , externalConfig = Schemas.ExternalConfigs.default
           , merger = Schemas.Merger.default
