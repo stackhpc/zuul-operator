@@ -58,78 +58,62 @@ in      \(input : Input)
     ->  let zk-conf =
               merge
                 { None =
-                  [ Volume::{
-                    , name = "${input.name}-secret-zk"
-                    , dir = "/conf-tls"
-                    , files =
-                      [ { path = "zoo.cfg"
-                        , content = ./files/zoo.cfg.dhall "/conf" "/conf"
-                        }
-                      ]
-                    }
-                  ]
-                , Some = \(some : UserSecret) -> [] : List Volume.Type
-                }
-                input.zookeeper
-
-        let zk-client-conf =
-              merge
-                { None =
-                  [ Volume::{
-                    , name = "${input.name}-zookeeper-tls"
-                    , dir = "/etc/zookeeper-tls"
-                    }
-                  ]
-                , Some = \(some : UserSecret) -> [] : List Volume.Type
-                }
-                input.zookeeper
-
-        let zk-hosts-zuul =
-              merge
-                { None =
-                    ''
-                    hosts=zk:2281
-                    tls_cert=/etc/zookeeper-tls/tls.crt
-                    tls_key=/etc/zookeeper-tls/tls.key
-                    tls_ca=/etc/zookeeper-tls/ca.crt
-                    ''
-                , Some = \(some : UserSecret) -> "hosts=%(ZUUL_ZK_HOSTS)"
-                }
-                input.zookeeper
-
-        let zk-hosts-nodepool =
-              merge
-                { None =
-                    ''
-                    zookeeper-servers:
-                      - host: zk
-                        port: 2281
-                    zookeeper-tls:
-                        cert: /etc/zookeeper-tls/tls.crt
-                        key: /etc/zookeeper-tls/tls.key
-                        ca: /etc/zookeeper-tls/ca.crt
-                    ''
-                , Some =
-                        \(some : UserSecret)
-                    ->  ''
-                        zookeeper-servers:
-                          - hosts: %(ZUUL_ZK_HOSTS)"
-                        ''
-                }
-                input.zookeeper
-
-        let {- Add support for TLS protected external zookeeper service
-            -} zk-hosts-secret-env =
-              merge
-                { None = [] : List Kubernetes.EnvVar.Type
-                , Some =
-                        \(some : UserSecret)
-                    ->  F.mkEnvVarSecret
-                          [ { name = "ZUUL_ZK_HOSTS"
-                            , secret = some.secretName
-                            , key = F.defaultText some.key "hosts"
+                    { ServiceVolumes =
+                      [ Volume::{
+                        , name = "${input.name}-secret-zk"
+                        , dir = "/conf-tls"
+                        , files =
+                          [ { path = "zoo.cfg"
+                            , content = ./files/zoo.cfg.dhall "/conf" "/conf"
                             }
                           ]
+                        }
+                      ]
+                    , ClientVolumes =
+                      [ Volume::{
+                        , name = "${input.name}-zookeeper-tls"
+                        , dir = "/etc/zookeeper-tls"
+                        }
+                      ]
+                    , Zuul =
+                        ''
+                        hosts=zk:2281
+                        tls_cert=/etc/zookeeper-tls/tls.crt
+                        tls_key=/etc/zookeeper-tls/tls.key
+                        tls_ca=/etc/zookeeper-tls/ca.crt
+                        ''
+                    , Nodepool =
+                        ''
+                        zookeeper-servers:
+                          - host: zk
+                            port: 2281
+                        zookeeper-tls:
+                            cert: /etc/zookeeper-tls/tls.crt
+                            key: /etc/zookeeper-tls/tls.key
+                            ca: /etc/zookeeper-tls/ca.crt
+                        ''
+                    , Env = [] : List Kubernetes.EnvVar.Type
+                    }
+                , Some =
+                        \(some : UserSecret)
+                    ->  let empty = [] : List Volume.Type
+
+                        in  { ServiceVolumes = empty
+                            , ClientVolumes = empty
+                            , Zuul = "hosts=%(ZUUL_ZK_HOSTS)"
+                            , Nodepool =
+                                ''
+                                zookeeper-servers:
+                                  - hosts: %(ZUUL_ZK_HOSTS)"
+                                ''
+                            , Env =
+                                F.mkEnvVarSecret
+                                  [ { name = "ZUUL_ZK_HOSTS"
+                                    , secret = some.secretName
+                                    , key = F.defaultText some.key "hosts"
+                                    }
+                                  ]
+                            }
                 }
                 input.zookeeper
 
@@ -168,7 +152,7 @@ in      \(input : Input)
               , dir = "/etc/zuul"
               , files =
                 [ { path = "zuul.conf"
-                  , content = ./files/zuul.conf.dhall input zk-hosts-zuul
+                  , content = ./files/zuul.conf.dhall input zk-conf.Zuul
                   }
                 ]
               }
@@ -196,7 +180,7 @@ in      \(input : Input)
               , dir = "/etc/nodepool"
               , files =
                 [ { path = "nodepool.yaml"
-                  , content = ./files/nodepool.yaml.dhall zk-hosts-nodepool
+                  , content = ./files/nodepool.yaml.dhall zk-conf.Nodepool
                   }
                 ]
               }
@@ -311,7 +295,7 @@ in      \(input : Input)
                         { None =
                             ./components/ZooKeeper.dhall
                               input.name
-                              (zk-client-conf # zk-conf)
+                              (zk-conf.ClientVolumes # zk-conf.ServiceVolumes)
                         , Some =
                                 \(some : UserSecret)
                             ->  F.KubernetesComponent.default
@@ -366,7 +350,7 @@ in      \(input : Input)
                         }
 
                   let zuul-volumes =
-                        [ etc-zuul, gearman-config ] # zk-client-conf
+                        [ etc-zuul, gearman-config ] # zk-conf.ClientVolumes
 
                   in  { Scheduler =
                           ./components/Scheduler.dhall
@@ -376,7 +360,7 @@ in      \(input : Input)
                             )
                             zuul-data-dir
                             (zuul-volumes # [ sched-config ])
-                            (zuul-env # db-secret-env # zk-hosts-secret-env)
+                            (zuul-env # db-secret-env # zk-conf.Env)
                       , Executor =
                           ./components/Executor.dhall
                             input.name
@@ -393,7 +377,7 @@ in      \(input : Input)
                             (input.web // zuul-image "web" input.web.image)
                             zuul-data-dir
                             zuul-volumes
-                            (zuul-env # db-secret-env # zk-hosts-secret-env)
+                            (zuul-env # db-secret-env # zk-conf.Env)
                       , Merger =
                           ./components/Merger.dhall
                             input.name
@@ -483,7 +467,7 @@ in      \(input : Input)
                           [ etc-nodepool, nodepool-config ]
                         # openstack-config
                         # kubernetes-config
-                        # zk-client-conf
+                        # zk-conf.ClientVolumes
 
                   let shard-config =
                         "cat /etc/nodepool/nodepool.yaml /etc/nodepool-config/*.yaml > /var/lib/nodepool/config.yaml; "
@@ -604,7 +588,7 @@ in      \(input : Input)
                               Volume.Type
                               Kubernetes.Resource
                               mkSecret
-                              (   zk-conf
+                              (   zk-conf.ServiceVolumes
                                 # [ etc-zuul, etc-nodepool, etc-zuul-registry ]
                               )
                           # mkUnion Components.Backend.Database
