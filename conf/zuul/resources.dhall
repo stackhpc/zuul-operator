@@ -251,241 +251,42 @@ in      \(input : Input)
                   let zuul-volumes =
                         [ etc-zuul, gearman-config ] # zk-client-conf
 
-                  let web-volumes = zuul-volumes
-
-                  let merger-volumes = zuul-volumes
-
-                  let scheduler-volumes = zuul-volumes # [ sched-config ]
-
-                  let executor-volumes = zuul-volumes # [ executor-ssh-key ]
-
-                  in  { Scheduler = F.KubernetesComponent::{
-                        , Service = Some
-                            (F.mkService input.name "scheduler" "gearman" 4730)
-                        , StatefulSet = Some
-                            ( F.mkStatefulSet
-                                input.name
-                                F.Component::{
-                                , name = "scheduler"
-                                , count = 1
-                                , data-dir = zuul-data-dir
-                                , volumes = scheduler-volumes
-                                , claim-size = 5
-                                , container = Kubernetes.Container::{
-                                  , name = "scheduler"
-                                  , image = zuul-image "scheduler"
-                                  , args = Some [ "zuul-scheduler", "-d" ]
-                                  , imagePullPolicy = Some "IfNotPresent"
-                                  , ports = Some
-                                    [ Kubernetes.ContainerPort::{
-                                      , name = Some "gearman"
-                                      , containerPort = 4730
-                                      }
-                                    ]
-                                  , env = Some
-                                      (   zuul-env
-                                        # db-secret-env
-                                        # zk-hosts-secret-env
-                                      )
-                                  , volumeMounts = Some
-                                      ( F.mkVolumeMount
-                                          (scheduler-volumes # zuul-data-dir)
-                                      )
-                                  }
-                                }
-                            )
-                        }
-                      , Executor = F.KubernetesComponent::{
-                        , Service = Some
-                            (F.mkService input.name "executor" "finger" 7900)
-                        , StatefulSet = Some
-                            ( F.mkStatefulSet
-                                input.name
-                                F.Component::{
-                                , name = "executor"
-                                , count = 1
-                                , data-dir = zuul-data-dir
-                                , volumes = executor-volumes
-                                , extra-volumes =
-                                    let job-volumes =
-                                          F.mkJobVolume
-                                            Kubernetes.Volume.Type
-                                            (     \(job-volume : JobVolume)
-                                              ->  job-volume.volume
-                                            )
-                                            input.jobVolumes
-
-                                    in  job-volumes
-                                , claim-size = 0
-                                , container = Kubernetes.Container::{
-                                  , name = "executor"
-                                  , image = zuul-image "executor"
-                                  , args = Some [ "zuul-executor", "-d" ]
-                                  , imagePullPolicy = Some "IfNotPresent"
-                                  , ports = Some
-                                    [ Kubernetes.ContainerPort::{
-                                      , name = Some "finger"
-                                      , containerPort = 7900
-                                      }
-                                    ]
-                                  , env = Some (zuul-env # db-nosecret-env)
-                                  , volumeMounts =
-                                      let job-volumes-mount =
-                                            F.mkJobVolume
-                                              Volume.Type
-                                              (     \(job-volume : JobVolume)
-                                                ->  Volume::{
-                                                    , name =
-                                                        job-volume.volume.name
-                                                    , dir = job-volume.dir
-                                                    }
-                                              )
-                                              input.jobVolumes
-
-                                      in  Some
-                                            ( F.mkVolumeMount
-                                                (   executor-volumes
-                                                  # zuul-data-dir
-                                                  # job-volumes-mount
-                                                )
-                                            )
-                                  , securityContext = Some Kubernetes.SecurityContext::{
-                                    , privileged = Some True
-                                    }
-                                  }
-                                }
-                            )
-                        }
-                      , Web = F.KubernetesComponent::{
-                        , Service = Some
-                            (F.mkService input.name "web" "api" 9000)
-                        , Deployment = Some
-                            ( F.mkDeployment
-                                input.name
-                                F.Component::{
-                                , name = "web"
-                                , count = 1
-                                , data-dir = zuul-data-dir
-                                , volumes = web-volumes
-                                , container = Kubernetes.Container::{
-                                  , name = "web"
-                                  , image = zuul-image "web"
-                                  , args = Some [ "zuul-web", "-d" ]
-                                  , imagePullPolicy = Some "IfNotPresent"
-                                  , ports = Some
-                                    [ Kubernetes.ContainerPort::{
-                                      , name = Some "api"
-                                      , containerPort = 9000
-                                      }
-                                    ]
-                                  , env = Some
-                                      (   zuul-env
-                                        # db-secret-env
-                                        # zk-hosts-secret-env
-                                      )
-                                  , volumeMounts = Some
-                                      ( F.mkVolumeMount
-                                          (web-volumes # zuul-data-dir)
-                                      )
-                                  }
-                                }
-                            )
-                        }
-                      , Merger = F.KubernetesComponent::{
-                        , Deployment = Some
-                            ( F.mkDeployment
-                                input.name
-                                F.Component::{
-                                , name = "merger"
-                                , count = 1
-                                , data-dir = zuul-data-dir
-                                , volumes = merger-volumes
-                                , container = Kubernetes.Container::{
-                                  , name = "merger"
-                                  , image = zuul-image "merger"
-                                  , args = Some [ "zuul-merger", "-d" ]
-                                  , imagePullPolicy = Some "IfNotPresent"
-                                  , env = Some (zuul-env # db-nosecret-env)
-                                  , volumeMounts = Some
-                                      ( F.mkVolumeMount
-                                          (merger-volumes # zuul-data-dir)
-                                      )
-                                  }
-                                }
-                            )
-                        }
+                  in  { Scheduler =
+                          ./components/Scheduler.dhall
+                            input.name
+                            (zuul-image "scheduler")
+                            zuul-data-dir
+                            (zuul-volumes # [ sched-config ])
+                            (zuul-env # db-secret-env # zk-hosts-secret-env)
+                      , Executor =
+                          ./components/Executor.dhall
+                            input.name
+                            (zuul-image "executor")
+                            zuul-data-dir
+                            (zuul-volumes # [ executor-ssh-key ])
+                            (zuul-env # db-nosecret-env)
+                            input.jobVolumes
+                      , Web =
+                          ./components/Web.dhall
+                            input.name
+                            (zuul-image "web")
+                            zuul-data-dir
+                            zuul-volumes
+                            (zuul-env # db-secret-env # zk-hosts-secret-env)
+                      , Merger =
+                          ./components/Merger.dhall
+                            input.name
+                            (zuul-image "merger")
+                            zuul-data-dir
+                            zuul-volumes
+                            (zuul-env # db-nosecret-env)
                       , Registry =
-                          let registry-volumes =
-                                [ etc-zuul-registry
-                                , Volume::{
-                                  , name = input.name ++ "-registry-tls"
-                                  , dir = "/etc/zuul-registry"
-                                  }
-                                ]
-
-                          let registry-env =
-                                F.mkEnvVarSecret
-                                  ( Prelude.List.map
-                                      Text
-                                      F.EnvSecret
-                                      (     \(key : Text)
-                                        ->  { name = "ZUUL_REGISTRY_${key}"
-                                            , key = key
-                                            , secret =
-                                                input.name ++ "-registry-tls"
-                                            }
-                                      )
-                                      [ "secret", "username", "password" ]
-                                  )
-
-                          in  F.KubernetesComponent::{
-                              , Service = Some
-                                  ( F.mkService
-                                      input.name
-                                      "registry"
-                                      "registry"
-                                      9000
-                                  )
-                              , StatefulSet = Some
-                                  ( F.mkStatefulSet
-                                      input.name
-                                      F.Component::{
-                                      , name = "registry"
-                                      , count =
-                                          F.defaultNat input.registry.count 0
-                                      , data-dir = zuul-data-dir
-                                      , volumes = registry-volumes
-                                      , claim-size =
-                                          F.defaultNat
-                                            input.registry.storage-size
-                                            20
-                                      , container = Kubernetes.Container::{
-                                        , name = "registry"
-                                        , image = zuul-image "registry"
-                                        , args = Some
-                                          [ "zuul-registry"
-                                          , "-c"
-                                          , "/etc/zuul/registry.yaml"
-                                          , "serve"
-                                          ]
-                                        , imagePullPolicy = Some "IfNotPresent"
-                                        , ports = Some
-                                          [ Kubernetes.ContainerPort::{
-                                            , name = Some "registry"
-                                            , containerPort = 9000
-                                            }
-                                          ]
-                                        , env = Some registry-env
-                                        , volumeMounts = Some
-                                            ( F.mkVolumeMount
-                                                (   registry-volumes
-                                                  # zuul-data-dir
-                                                )
-                                            )
-                                        }
-                                      }
-                                  )
-                              }
+                          ./components/Registry.dhall
+                            input.name
+                            (zuul-image "registry")
+                            zuul-data-dir
+                            [ etc-zuul-registry ]
+                            input.registry
                       }
               , Nodepool =
                   let nodepool-image =
