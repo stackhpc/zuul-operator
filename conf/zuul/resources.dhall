@@ -178,117 +178,29 @@ in      \(input : Input)
 
         let Components =
               { Backend =
-                  let db-volumes =
-                        [ Volume::{ name = "pg-data", dir = "/var/lib/pg/" } ]
-
-                  let zk-volumes =
-                        [ Volume::{
-                          , name = "zk-log"
-                          , dir = "/var/log/zookeeper/"
-                          }
-                        , Volume::{
-                          , name = "zk-dat"
-                          , dir = "/var/lib/zookeeper/"
-                          }
-                        ]
-
-                  in  { Database =
-                          merge
-                            { None = F.KubernetesComponent::{
-                              , Service = Some
-                                  (F.mkService input.name "db" "pg" 5432)
-                              , StatefulSet = Some
-                                  ( F.mkStatefulSet
-                                      input.name
-                                      F.Component::{
-                                      , name = "db"
-                                      , count = 1
-                                      , data-dir = db-volumes
-                                      , claim-size = 1
-                                      , container = Kubernetes.Container::{
-                                        , name = "db"
-                                        , image = Some
-                                            "docker.io/library/postgres:12.1"
-                                        , imagePullPolicy = Some "IfNotPresent"
-                                        , ports = Some
-                                          [ Kubernetes.ContainerPort::{
-                                            , name = Some "pg"
-                                            , containerPort = 5432
-                                            }
-                                          ]
-                                        , env = Some
-                                            (   F.mkEnvVarValue
-                                                  ( toMap
-                                                      { POSTGRES_USER = "zuul"
-                                                      , PGDATA =
-                                                          "/var/lib/pg/data"
-                                                      }
-                                                  )
-                                              # db-internal-password-env
-                                                  "POSTGRES_PASSWORD"
-                                            )
-                                        , volumeMounts = Some
-                                            (F.mkVolumeMount db-volumes)
-                                        }
-                                      }
-                                  )
-                              }
-                            , Some =
-                                    \(some : UserSecret)
-                                ->  F.KubernetesComponent.default
-                            }
-                            input.database
-                      , ZooKeeper =
-                          merge
-                            { None = F.KubernetesComponent::{
-                              , Service = Some
-                                  (F.mkService input.name "zk" "zk" 2281)
-                              , StatefulSet = Some
-                                  ( F.mkStatefulSet
-                                      input.name
-                                      F.Component::{
-                                      , name = "zk"
-                                      , count = 1
-                                      , data-dir = zk-volumes
-                                      , volumes = zk-conf # zk-client-conf
-                                      , claim-size = 1
-                                      , container = Kubernetes.Container::{
-                                        , name = "zk"
-                                        , command = Some
-                                          [ "sh"
-                                          , "-c"
-                                          ,     "cp /conf-tls/zoo.cfg /conf/ && "
-                                            ++  "cp /etc/zookeeper-tls/zk.pem /conf/zk.pem && "
-                                            ++  "cp /etc/zookeeper-tls/ca.crt /conf/ca.pem && "
-                                            ++  "chown zookeeper /conf/zoo.cfg /conf/zk.pem /conf/ca.pem && "
-                                            ++  "exec /docker-entrypoint.sh zkServer.sh start-foreground"
-                                          ]
-                                        , image = Some
-                                            "docker.io/library/zookeeper"
-                                        , imagePullPolicy = Some "IfNotPresent"
-                                        , ports = Some
-                                          [ Kubernetes.ContainerPort::{
-                                            , name = Some "zk"
-                                            , containerPort = 2281
-                                            }
-                                          ]
-                                        , volumeMounts = Some
-                                            ( F.mkVolumeMount
-                                                (   zk-volumes
-                                                  # zk-conf
-                                                  # zk-client-conf
-                                                )
-                                            )
-                                        }
-                                      }
-                                  )
-                              }
-                            , Some =
-                                    \(some : UserSecret)
-                                ->  F.KubernetesComponent.default
-                            }
-                            input.zookeeper
-                      }
+                  { Database =
+                      merge
+                        { None =
+                            ./components/Database.dhall
+                              input.name
+                              db-internal-password-env
+                        , Some =
+                                \(some : UserSecret)
+                            ->  F.KubernetesComponent.default
+                        }
+                        input.database
+                  , ZooKeeper =
+                      merge
+                        { None =
+                            ./components/ZooKeeper.dhall
+                              input.name
+                              (zk-client-conf # zk-conf)
+                        , Some =
+                                \(some : UserSecret)
+                            ->  F.KubernetesComponent.default
+                        }
+                        input.zookeeper
+                  }
               , Zuul =
                   let zuul-image =
                         \(name : Text) -> Some (image ("zuul-" ++ name))
