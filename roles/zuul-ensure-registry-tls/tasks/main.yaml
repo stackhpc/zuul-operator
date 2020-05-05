@@ -3,12 +3,10 @@
     registry_certs: "{{ lookup('k8s', api_version='v1', kind='Secret', namespace=namespace, resource_name=zuul_name + '-registry-tls') }}"
 
 - name: Generate and store certs
-  when: registry_certs.data is not defined
+  when:
+    - not cert_manager
+    - registry_certs.data is not defined
   block:
-    - name: Generate temporary CA
-      when: cert_manager
-      command: "openssl req -new -newkey rsa:2048 -nodes -keyout ca-{{ zuul_name }}.key -x509 -days 3650 -out ca-{{ zuul_name }}.pem -subj '/C=US/ST=Texas/L=Austin/O=Zuul/CN=gearman-ca'"
-
     - name: Generate certs
       command: "{{ item }}"
       loop:
@@ -29,5 +27,26 @@
             username: "zuul"
             password: "{{ lookup('password', '/dev/null') }}"
             secret:   "{{ lookup('password', '/dev/null') }}"
-            cert.key: "{{ lookup('file', 'registry-' + zuul_name + '.key') }}"
-            cert.pem: "{{ lookup('file', 'registry-' + zuul_name + '.pem') }}"
+            tls.key: "{{ lookup('file', 'registry-' + zuul_name + '.key') }}"
+            tls.crt: "{{ lookup('file', 'registry-' + zuul_name + '.pem') }}"
+
+- name: Check if registry rw user exists
+  set_fact:
+    registry_user_rw: "{{ lookup('k8s', api_version='v1', kind='Secret', namespace=namespace, resource_name=zuul_name + '-registry-user-rw') }}"
+
+- name: Generate and store user
+  when: registry_user_rw.data is not defined
+  block:
+    - name: Create k8s secret
+      k8s:
+        state: "{{ state }}"
+        namespace: "{{ namespace }}"
+        definition:
+          apiVersion: v1
+          kind: Secret
+          metadata:
+            name: "{{ zuul_name }}-registry-user-rw"
+          stringData:
+            username: "zuul"
+            password: "{{ lookup('password', '/dev/null') }}"
+            secret:   "{{ lookup('password', '/dev/null') }}"

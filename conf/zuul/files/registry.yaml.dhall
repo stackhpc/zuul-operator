@@ -7,8 +7,8 @@
       address: '0.0.0.0'
       port: 9000
       public-url: ${public-url}
-      tls-cert: /etc/zuul-registry/cert.pem
-      tls-key: /etc/zuul-registry/cert.key
+      tls-cert: /etc/zuul-registry/tls.crt
+      tls-key: /etc/zuul-registry/tls.key
       secret: "%(ZUUL_REGISTRY_secret)"
       storage:
         driver: filesystem

@@ -10,20 +10,27 @@ Unless cert-manager usage is enabled, the resources expect those secrets to be a
   * `tls.crt`
   * `tls.key`
 
+* `${name}-registry-tls` with:
+
+  * `tls.crt`
+  * `tls.key`
+
+
 The resources expect those secrets to be available:
 
 * `${name}-zookeeper-tls` with:
+
   * `ca.crt`
   * `tls.crt`
   * `tls.key`
   * `zk.pem` the keystore
 
-* `${name}-registry-tls` with:
-  * `cert.pem`
-  * `cert.key`
+* `${name}-registry-user-rw` with:
+
   * `secret` a password
   * `username` the user name with write access
   * `password` the user password
+
 
 Unless the input.database db uri is provided, the resources expect this secret to be available:
 
@@ -188,6 +195,33 @@ in      \(input : Input)
                         , name = "${input.name}-ca"
                         }
 
+                  let registry-enabled =
+                            Natural/isZero (F.defaultNat input.registry.count 0)
+                        ==  False
+
+                  let registry-cert =
+                              if registry-enabled
+
+                        then  [ CertManager.Certificate::{
+                                , metadata =
+                                    F.mkObjectMeta
+                                      "${input.name}-registry-tls"
+                                      ( F.mkComponentLabel
+                                          input.name
+                                          "cert-registry"
+                                      )
+                                , spec = CertManager.CertificateSpec::{
+                                  , secretName = "${input.name}-registry-tls"
+                                  , issuerRef = issuer
+                                  , dnsNames = Some [ "registry" ]
+                                  , usages = Some
+                                    [ "server auth", "client auth" ]
+                                  }
+                                }
+                              ]
+
+                        else  [] : List CertManager.Certificate.Type
+
                   in  { Issuers =
                         [ CertManager.Issuer::{
                           , metadata =
@@ -212,34 +246,39 @@ in      \(input : Input)
                           }
                         ]
                       , Certificates =
-                        [ CertManager.Certificate::{
-                          , metadata =
-                              F.mkObjectMeta
-                                "${input.name}-ca"
-                                (F.mkComponentLabel input.name "cert-ca")
-                          , spec = CertManager.CertificateSpec::{
-                            , secretName = "${input.name}-ca"
-                            , isCA = Some True
-                            , commonName = Some "selfsigned-root-ca"
-                            , issuerRef =
-                                issuer // { name = "${input.name}-selfsigning" }
-                            , usages = Some
-                              [ "server auth", "client auth", "cert sign" ]
-                            }
-                          }
-                        , CertManager.Certificate::{
-                          , metadata =
-                              F.mkObjectMeta
-                                "${input.name}-gearman-tls"
-                                (F.mkComponentLabel input.name "cert-gearman")
-                          , spec = CertManager.CertificateSpec::{
-                            , secretName = "${input.name}-gearman-tls"
-                            , issuerRef = issuer
-                            , dnsNames = Some [ "gearman" ]
-                            , usages = Some [ "server auth", "client auth" ]
-                            }
-                          }
-                        ]
+                            [ CertManager.Certificate::{
+                              , metadata =
+                                  F.mkObjectMeta
+                                    "${input.name}-ca"
+                                    (F.mkComponentLabel input.name "cert-ca")
+                              , spec = CertManager.CertificateSpec::{
+                                , secretName = "${input.name}-ca"
+                                , isCA = Some True
+                                , commonName = Some "selfsigned-root-ca"
+                                , issuerRef =
+                                        issuer
+                                    //  { name = "${input.name}-selfsigning" }
+                                , usages = Some
+                                  [ "server auth", "client auth", "cert sign" ]
+                                }
+                              }
+                            , CertManager.Certificate::{
+                              , metadata =
+                                  F.mkObjectMeta
+                                    "${input.name}-gearman-tls"
+                                    ( F.mkComponentLabel
+                                        input.name
+                                        "cert-gearman"
+                                    )
+                              , spec = CertManager.CertificateSpec::{
+                                , secretName = "${input.name}-gearman-tls"
+                                , issuerRef = issuer
+                                , dnsNames = Some [ "gearman" ]
+                                , usages = Some [ "server auth", "client auth" ]
+                                }
+                              }
+                            ]
+                          # registry-cert
                       }
               , Backend =
                   { Database =

@@ -23,7 +23,7 @@ let registry-env =
                 (     \(key : Text)
                   ->  { name = "ZUUL_REGISTRY_${key}"
                       , key = key
-                      , secret = app-name ++ "-registry-tls"
+                      , secret = "${app-name}-registry-user-rw"
                       }
                 )
                 [ "secret", "username", "password" ]
