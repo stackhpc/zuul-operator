@@ -33,6 +33,8 @@ let Kubernetes = ../Kubernetes.dhall
 
 let Schemas = ./input.dhall
 
+let F = ./functions.dhall
+
 let Input = Schemas.Input.Type
 
 let JobVolume = Schemas.JobVolume.Type
@@ -84,263 +86,6 @@ let {- The Kubernetes resources of a Component
           , StatefulSet = None Kubernetes.StatefulSet.Type
           }
       }
-
-let DefaultNat =
-          \(value : Optional Natural)
-      ->  \(default : Natural)
-      ->  merge { None = default, Some = \(some : Natural) -> some } value
-
-let DefaultText =
-          \(value : Optional Text)
-      ->  \(default : Text)
-      ->  merge { None = default, Some = \(some : Text) -> some } value
-
-let DefaultKey =
-          \(secret : Optional UserSecret)
-      ->  \(default : Text)
-      ->  merge
-            { None = default
-            , Some = \(some : UserSecret) -> DefaultText some.key default
-            }
-            secret
-
-let newlineSep = Prelude.Text.concatSep "\n"
-
-let {- This methods process the optional input.job-volumes list. It takes:
-    * the desired output type
-    * a function that goes from JobVolume to the output type
-    * the input.job-volumes spec attribute
-
-    Then it returns a list of the output type
-    -} mkJobVolume =
-          \(OutputType : Type)
-      ->  \(f : JobVolume -> OutputType)
-      ->  \(job-volumes : Optional (List JobVolume))
-      ->  merge
-            { None = [] : List OutputType
-            , Some = Prelude.List.map JobVolume OutputType f
-            }
-            job-volumes
-
-let {- This method renders the zuul.conf
-    -} mkZuulConf =
-          \(input : Input)
-      ->  \(zk-hosts : Text)
-      ->  let {- This is a high level method. It takes:
-              * a Connection type such as `Schemas.Gerrit.Type`,
-              * an Optional List of that type
-              * a function that goes from that type to a zuul.conf text blob
-
-              Then it returns a text blob for all the connections
-              -} mkConns =
-                    \(type : Type)
-                ->  \(list : Optional (List type))
-                ->  \(f : type -> Text)
-                ->  newlineSep
-                      ( merge
-                          { None = [] : List Text
-                          , Some = Prelude.List.map type Text f
-                          }
-                          list
-                      )
-
-          let merger-email =
-                DefaultText
-                  input.merger.git_user_email
-                  "${input.name}@localhost"
-
-          let merger-user = DefaultText input.merger.git_user_name "Zuul"
-
-          let executor-key-name =
-                DefaultText input.executor.ssh_key.key "id_rsa"
-
-          let sched-config = DefaultText input.scheduler.config.key "main.yaml"
-
-          let web-url = DefaultText input.web.status_url "http://web:9000"
-
-          let extra-kube-path = "/etc/nodepool-kubernetes/"
-
-          let db-uri =
-                merge
-                  { None = "postgresql://zuul:%(ZUUL_DB_PASSWORD)s@db/zuul"
-                  , Some = \(some : UserSecret) -> "%(ZUUL_DB_URI)s"
-                  }
-                  input.database
-
-          let gerrits-conf =
-                mkConns
-                  Schemas.Gerrit.Type
-                  input.connections.gerrits
-                  (     \(gerrit : Schemas.Gerrit.Type)
-                    ->  let key = DefaultText gerrit.sshkey.key "id_rsa"
-
-                        let server = DefaultText gerrit.server gerrit.name
-
-                        in  ''
-                            [connection ${gerrit.name}]
-                            driver=gerrit
-                            server=${server}
-                            sshkey=/etc/zuul-gerrit-${gerrit.name}/${key}
-                            user=${gerrit.user}
-                            baseurl=${gerrit.baseurl}
-                            ''
-                  )
-
-          let githubs-conf =
-                mkConns
-                  Schemas.GitHub.Type
-                  input.connections.githubs
-                  (     \(github : Schemas.GitHub.Type)
-                    ->  let key = DefaultText github.app_key.key "github_rsa"
-
-                        in  ''
-                            [connection ${github.name}]
-                            driver=github
-                            server=github.com
-                            app_id={github.app_id}
-                            app_key=/etc/zuul-github-${github.name}/${key}
-                            ''
-                  )
-
-          let gits-conf =
-                mkConns
-                  Schemas.Git.Type
-                  input.connections.gits
-                  (     \(git : Schemas.Git.Type)
-                    ->  ''
-                        [connection ${git.name}]
-                        driver=git
-                        baseurl=${git.baseurl}
-
-                        ''
-                  )
-
-          let mqtts-conf =
-                mkConns
-                  Schemas.Mqtt.Type
-                  input.connections.mqtts
-                  (     \(mqtt : Schemas.Mqtt.Type)
-                    ->  let user =
-                              merge
-                                { None = ""
-                                , Some = \(some : Text) -> "user=${some}"
-                                }
-                                mqtt.user
-
-                        let password =
-                              merge
-                                { None = ""
-                                , Some =
-                                        \(some : UserSecret)
-                                    ->  "password=%(ZUUL_MQTT_PASSWORD)"
-                                }
-                                mqtt.password
-
-                        in  ''
-                            [connection ${mqtt.name}]
-                            driver=mqtt
-                            server=${mqtt.server}
-                            ${user}
-                            ${password}
-                            ''
-                  )
-
-          let job-volumes =
-                mkJobVolume
-                  Text
-                  (     \(job-volume : JobVolume)
-                    ->  let {- TODO: add support for abritary lists of path per (context, access)
-                            -} context =
-                              merge
-                                { trusted = "trusted", untrusted = "untrusted" }
-                                job-volume.context
-
-                        let access =
-                              merge
-                                { None = "ro"
-                                , Some =
-                                        \(access : < ro | rw >)
-                                    ->  merge { ro = "ro", rw = "rw" } access
-                                }
-                                job-volume.access
-
-                        in  "${context}_${access}_paths=${job-volume.path}"
-                  )
-                  input.jobVolumes
-
-          in      ''
-                  [gearman]
-                  server=scheduler
-                  ssl_ca=/etc/zuul-gearman/ca.pem
-                  ssl_cert=/etc/zuul-gearman/client.pem
-                  ssl_key=/etc/zuul-gearman/client.key
-
-                  [gearman_server]
-                  start=true
-                  ssl_ca=/etc/zuul-gearman/ca.pem
-                  ssl_cert=/etc/zuul-gearman/server.pem
-                  ssl_key=/etc/zuul-gearman/server.key
-
-                  [zookeeper]
-                  ${zk-hosts}
-
-                  [merger]
-                  git_user_email=${merger-email}
-                  git_user_name=${merger-user}
-
-                  [scheduler]
-                  tenant_config=/etc/zuul-scheduler/${sched-config}
-
-                  [web]
-                  listen_address=0.0.0.0
-                  root=${web-url}
-
-                  [executor]
-                  private_key_file=/etc/zuul-executor/${executor-key-name}
-                  manage_ansible=false
-
-                  ''
-              ++  Prelude.Text.concatSep "\n" job-volumes
-              ++  ''
-
-                  [connection "sql"]
-                  driver=sql
-                  dburi=${db-uri}
-
-                  ''
-              ++  gits-conf
-              ++  gerrits-conf
-              ++  githubs-conf
-              ++  mqtts-conf
-
-let mkNodepoolConf =
-          \(zk-host : Text)
-      ->  ''
-          ${zk-host}
-          ''
-
-let {- This method renders the zoo.cfg
-    -} mkZookeeperConf =
-          \(keystore-password : Text)
-      ->  ''
-          dataDir=/data
-          dataLogDir=/datalog
-          tickTime=2000
-          initLimit=5
-          syncLimit=2
-          autopurge.snapRetainCount=3
-          autopurge.purgeInterval=0
-          maxClientCnxns=60
-          standaloneEnabled=true
-          admin.enableServer=true
-          server.1=0.0.0.0:2888:3888
-
-          # TLS configuration
-          secureClientPort=2281
-          serverCnxnFactory=org.apache.zookeeper.server.NettyServerCnxnFactory
-          ssl.keyStore.location=/conf/zk.pem
-          ssl.trustStore.location=/conf/ca.pem
-          ''
 
 in      \(input : Input)
     ->  let app-labels =
@@ -544,9 +289,6 @@ in      \(input : Input)
                         )
                     }
 
-        let {- TODO: generate random password -} default-zk-keystorepassword =
-              "keystorepassword"
-
         let zk-conf =
               merge
                 { None =
@@ -555,7 +297,7 @@ in      \(input : Input)
                     , dir = "/conf-tls"
                     , files =
                       [ { path = "zoo.cfg"
-                        , content = mkZookeeperConf default-zk-keystorepassword
+                        , content = ./files/zoo.cfg.dhall "/conf" "/conf"
                         }
                       ]
                     }
@@ -619,7 +361,7 @@ in      \(input : Input)
                     ->  mkEnvVarSecret
                           [ { name = "ZUUL_ZK_HOSTS"
                             , secret = some.secretName
-                            , key = DefaultText some.key "hosts"
+                            , key = F.defaultText some.key "hosts"
                             }
                           ]
                 }
@@ -640,31 +382,13 @@ in      \(input : Input)
 
         let image = \(name : Text) -> "${org}/${name}:${version}"
 
-        let etc-nodepool =
-              Volume::{
-              , name = input.name ++ "-secret-nodepool"
-              , dir = "/etc/nodepool"
-              , files =
-                [ { path = "nodepool.yaml"
-                  , content =
-                      ''
-                      ${zk-hosts-nodepool}
-
-                      webapp:
-                        port: 5000
-
-                      ''
-                  }
-                ]
-              }
-
         let etc-zuul =
               Volume::{
               , name = input.name ++ "-secret-zuul"
               , dir = "/etc/zuul"
               , files =
                 [ { path = "zuul.conf"
-                  , content = mkZuulConf input zk-hosts-zuul
+                  , content = ./files/zuul.conf.dhall input zk-hosts-zuul
                   }
                 ]
               }
@@ -677,26 +401,11 @@ in      \(input : Input)
                 [ { path = "registry.yaml"
                   , content =
                       let public-url =
-                            DefaultText
+                            F.defaultText
                               input.registry.public-url
                               "https://registry:9000"
 
-                      in  ''
-                          registry:
-                            address: '0.0.0.0'
-                            port: 9000
-                            public-url: ${public-url}
-                            tls-cert: /etc/zuul-registry/cert.pem
-                            tls-key: /etc/zuul-registry/cert.key
-                            secret: "%(ZUUL_REGISTRY_secret)"
-                            storage:
-                              driver: filesystem
-                              root: /var/lib/zuul
-                            users:
-                              - name: "%(ZUUL_REGISTRY_username)"
-                                pass: "%(ZUUL_REGISTRY_password)"
-                                access: write
-                          ''
+                      in  ./files/registry.yaml.dhall public-url
                   }
                 ]
               }
@@ -707,7 +416,7 @@ in      \(input : Input)
               , dir = "/etc/nodepool"
               , files =
                 [ { path = "nodepool.yaml"
-                  , content = mkNodepoolConf zk-hosts-nodepool
+                  , content = ./files/nodepool.yaml.dhall zk-hosts-nodepool
                   }
                 ]
               }
@@ -836,7 +545,7 @@ in      \(input : Input)
                               ->  mkEnvVarSecret
                                     [ { name = "ZUUL_DB_URI"
                                       , secret = some.secretName
-                                      , key = DefaultText some.key "db_uri"
+                                      , key = F.defaultText some.key "db_uri"
                                       }
                                     ]
                           }
@@ -924,7 +633,7 @@ in      \(input : Input)
                                 , volumes = executor-volumes
                                 , extra-volumes =
                                     let job-volumes =
-                                          mkJobVolume
+                                          F.mkJobVolume
                                             Kubernetes.Volume.Type
                                             (     \(job-volume : JobVolume)
                                               ->  job-volume.volume
@@ -947,7 +656,7 @@ in      \(input : Input)
                                   , env = Some (zuul-env # db-nosecret-env)
                                   , volumeMounts =
                                       let job-volumes-mount =
-                                            mkJobVolume
+                                            F.mkJobVolume
                                               Volume.Type
                                               (     \(job-volume : JobVolume)
                                                 ->  Volume::{
@@ -1059,11 +768,11 @@ in      \(input : Input)
                                       Component::{
                                       , name = "registry"
                                       , count =
-                                          DefaultNat input.registry.count 0
+                                          F.defaultNat input.registry.count 0
                                       , data-dir = zuul-data-dir
                                       , volumes = registry-volumes
                                       , claim-size =
-                                          DefaultNat
+                                          F.defaultNat
                                             input.registry.storage-size
                                             20
                                       , container = Kubernetes.Container::{
@@ -1143,12 +852,12 @@ in      \(input : Input)
                               { HOME = "/var/lib/nodepool"
                               , OS_CLIENT_CONFIG_FILE =
                                       "/etc/nodepool-openstack/"
-                                  ++  DefaultKey
+                                  ++  F.defaultKey
                                         input.externalConfig.openstack
                                         "clouds.yaml"
                               , KUBECONFIG =
                                       "/etc/nodepool-kubernetes/"
-                                  ++  DefaultKey
+                                  ++  F.defaultKey
                                         input.externalConfig.kubernetes
                                         "kube.config"
                               }
