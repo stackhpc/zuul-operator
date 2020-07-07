@@ -2,10 +2,10 @@
 
 TODO: replace opaque Text by structured zk host list and tls configuration
 -}
-    \(zk-host : Text)
-->  ''
-    ${zk-host}
+\(zk-host : Text) ->
+  ''
+  ${zk-host}
 
-    webapp:
-      port: 5000
-    ''
+  webapp:
+    port: 5000
+  ''

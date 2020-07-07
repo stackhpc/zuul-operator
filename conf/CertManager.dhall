@@ -32,11 +32,11 @@ let CertificateSpec =
           , issuerRef : { name : Text, kind : Text, group : Text }
           }
       , default =
-          { isCA = None Bool
-          , usages = None (List Text)
-          , commonName = None Text
-          , dnsNames = None (List Text)
-          }
+        { isCA = None Bool
+        , usages = None (List Text)
+        , commonName = None Text
+        , dnsNames = None (List Text)
+        }
       }
 
 let Certificate =
@@ -47,7 +47,7 @@ let Certificate =
           , spec : CertificateSpec.Type
           }
       , default =
-          { apiVersion = "cert-manager.io/v1alpha3", kind = "Certificate" }
+        { apiVersion = "cert-manager.io/v1alpha3", kind = "Certificate" }
       }
 
 let Union =
@@ -56,9 +56,4 @@ let Union =
       | Certificate : Certificate.Type
       >
 
-in  { IssuerSpec = IssuerSpec
-    , Issuer = Issuer
-    , CertificateSpec = CertificateSpec
-    , Certificate = Certificate
-    , Union = Union
-    }
+in  { IssuerSpec, Issuer, CertificateSpec, Certificate, Union }
