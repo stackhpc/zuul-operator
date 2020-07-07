@@ -1,10 +1,8 @@
 - name: start kubernetes and install all dependencies
   hosts: all
-  pre_tasks:
-    - name: Install openshift client for k8s tasks
-      command: python3 -m pip install --user openshift
   roles:
     - role: clear-firewall
+    - role: ensure-pip
     - role: ensure-podman
     - role: ensure-kubernetes
       vars:
@@ -14,6 +12,8 @@
     - role: use-buildset-registry
       buildset_registry_docker_user: root
   post_tasks:
+    - name: Install openshift client for k8s tasks
+      command: python3 -m pip install --user openshift
     - name: check kubernetes connection
       command: timeout 10s kubectl get pods
       register: _api_ready
