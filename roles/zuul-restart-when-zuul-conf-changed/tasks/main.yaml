@@ -27,7 +27,7 @@
       register: zuul_changes
 
     - name: Patch service
-      k8s:
+      community.kubernetes.k8s:
         state: present
         namespace: "{{ namespace }}"
         merge_type: merge

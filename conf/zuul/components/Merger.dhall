@@ -21,7 +21,6 @@ in  \(app-name : Text) ->
               , container = Kubernetes.Container::{
                 , name = "merger"
                 , image = input-merger.image
-                , args = Some [ "zuul-merger", "-d" ]
                 , imagePullPolicy = Some "IfNotPresent"
                 , env = Some env
                 , volumeMounts = Some (F.mkVolumeMount (data-dir # volumes))

@@ -44,7 +44,7 @@
   register: _json
 
 - name: Apply objects
-  k8s:
+  community.kubernetes.k8s:
     state: "{{ state }}"
     namespace: "{{ namespace }}"
     definition: "{{ item }}"

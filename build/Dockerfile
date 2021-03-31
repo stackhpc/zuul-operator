@@ -1,4 +1,4 @@
-FROM quay.io/operator-framework/ansible-operator:v0.13.0
+FROM quay.io/operator-framework/ansible-operator:v1.4.2
 
 # dhall versions and digests
 ARG DHALL_VERSION=1.33.1
@@ -14,9 +14,11 @@ ARG KUBECTL_DIGEST=a5eb7e2e44d858d96410937a4e4c82f9087c9d120cb2b9e92462878eda59d
 # Install extra requirements
 USER root
 
-# See: https://github.com/operator-framework/operator-sdk/issues/2384
 # Install gear to connect to the scheduler gearman
-RUN pip3 install --upgrade openshift gear
+RUN pip3 install --upgrade gear
+
+# Install collections
+RUN ansible-galaxy collection install community.kubernetes && chmod -R ug+rwx ${HOME}/.ansible
 
 # unarchive: bzip2 and tar
 # generate zuul ssh-keys or certificate: openssh and openssl

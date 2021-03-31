@@ -9,7 +9,7 @@ if test -d /var/lib/silverkube/storage; then
 fi
 
 echo "Update local image"
-CTX=$(sudo buildah from  ${BUILDAH_OPTS} docker.io/zuul/zuul-operator:latest)
+CTX=$(sudo buildah from  --pull-never ${BUILDAH_OPTS} docker.io/zuul/zuul-operator:latest)
 MNT=$(sudo buildah mount ${BUILDAH_OPTS} $CTX)
 
 sudo rsync -avi --delete roles/ ${MNT}/opt/ansible/roles/

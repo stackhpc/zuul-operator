@@ -4,7 +4,7 @@
 
 - name: Generate and store database password
   when: _zuul_db_password.data is not defined
-  k8s:
+  community.kubernetes.k8s:
     state: "{{ state }}"
     namespace: "{{ namespace }}"
     definition:

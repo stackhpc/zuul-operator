@@ -20,7 +20,7 @@ Look for operator pod and check it's output
 $ kubectl get pods
 NAME                            READY     STATUS    RESTARTS   AGE
 zuul-operator-c64756f66-rbdmg   2/2       Running   0          3s
-$ kubectl logs zuul-operator-c64756f66-rbdmg -c operator
+$ kubectl logs zuul-operator-c64756f66-rbdmg
 [...]
 {"level":"info","ts":1554197305.5853095,"logger":"cmd","msg":"Go Version: go1.10.3"}
 {"level":"info","ts":1554197305.5854425,"logger":"cmd","msg":"Go OS/Arch: linux/amd64"}

@@ -34,7 +34,6 @@ in  \(app-name : Text) ->
               , container = Kubernetes.Container::{
                 , name = "executor"
                 , image = input-executor.image
-                , args = Some [ "zuul-executor", "-d" ]
                 , imagePullPolicy = Some "IfNotPresent"
                 , ports = Some
                   [ Kubernetes.ContainerPort::{

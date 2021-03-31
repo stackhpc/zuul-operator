@@ -22,7 +22,6 @@ in  \(app-name : Text) ->
               , container = Kubernetes.Container::{
                 , name = "web"
                 , image = input-web.image
-                , args = Some [ "zuul-web", "-d" ]
                 , imagePullPolicy = Some "IfNotPresent"
                 , ports = Some
                   [ Kubernetes.ContainerPort::{

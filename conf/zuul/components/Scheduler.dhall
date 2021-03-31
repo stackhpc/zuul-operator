@@ -23,7 +23,6 @@ in  \(app-name : Text) ->
               , container = Kubernetes.Container::{
                 , name = "scheduler"
                 , image = input-scheduler.image
-                , args = Some [ "zuul-scheduler", "-d" ]
                 , imagePullPolicy = Some "IfNotPresent"
                 , ports = Some
                   [ Kubernetes.ContainerPort::{

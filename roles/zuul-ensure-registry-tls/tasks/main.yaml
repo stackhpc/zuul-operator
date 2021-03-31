@@ -15,7 +15,7 @@
         - "openssl x509 -req -days 3650 -in registry-{{ zuul_name }}.csr -out registry-{{ zuul_name }}.pem -CA ca-{{ zuul_name }}.pem -CAkey ca-{{ zuul_name }}.key -CAcreateserial"
 
     - name: Create k8s secret
-      k8s:
+      community.kubernetes.k8s:
         state: "{{ state }}"
         namespace: "{{ namespace }}"
         definition:
@@ -38,7 +38,7 @@
   when: registry_user_rw.data is not defined
   block:
     - name: Create k8s secret
-      k8s:
+      community.kubernetes.k8s:
         state: "{{ state }}"
         namespace: "{{ namespace }}"
         definition:

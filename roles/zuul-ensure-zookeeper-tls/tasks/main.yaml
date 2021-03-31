@@ -14,7 +14,7 @@
         creates: zk-ca/keys/clientkey.pem
 
     - name: Create k8s secret
-      k8s:
+      community.kubernetes.k8s:
         state: "{{ state }}"
         namespace: "{{ namespace }}"
         definition:
