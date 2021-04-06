@@ -66,7 +66,7 @@ class PerconaXtraDBCluster(NamespacedAPIObject):
 
 
 class ZuulObject(NamespacedAPIObject):
-    version = "operator.zuul-ci.org/v1alpha1"
+    version = "operator.zuul-ci.org/v1alpha2"
     endpoint = "zuuls"
     kind = "Zuul"
 

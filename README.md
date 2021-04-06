@@ -11,7 +11,7 @@ $ make image
 
 ```shell
 $ make install
-kubectl apply -f deploy/crds/zuul-ci_v1alpha1_zuul_crd.yaml -f deploy/rbac.yaml -f deploy/operator.yaml
+kubectl apply -f deploy/crds/zuul-ci_v1alpha2_zuul_crd.yaml -f deploy/rbac.yaml -f deploy/operator.yaml
 ```
 
 Look for operator pod and check it's output
@@ -33,7 +33,7 @@ $ kubectl logs zuul-operator-c64756f66-rbdmg
 
 ```
 $ kubectl apply -f - <<EOF
-apiVersion: operator.zuul-ci.org/v1alpha1
+apiVersion: operator.zuul-ci.org/v1alpha2
 kind: Zuul
 metadata:
   name: example-zuul
