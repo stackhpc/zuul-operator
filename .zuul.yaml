@@ -92,16 +92,19 @@
 - project:
     check:
       jobs:
+        - zuul-tox-docs
         - zuul-operator-build-image
         - zuul-operator-functional-k8s:
             dependencies: zuul-operator-build-image
     gate:
       jobs:
+        - zuul-tox-docs
         - zuul-operator-upload-image
         - zuul-operator-functional-k8s:
             dependencies: zuul-operator-upload-image
     promote:
       jobs:
+        - zuul-promote-docs
         - zuul-operator-promote-image
     release:
       jobs:
