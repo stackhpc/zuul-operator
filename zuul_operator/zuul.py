@@ -71,6 +71,10 @@ class Zuul:
         self.spec.setdefault('merger', {}).setdefault('count', 0)
         self.spec.setdefault('web', {}).setdefault('count', 1)
 
+        self.spec.setdefault('imagePrefix', 'docker.io/zuul')
+        self.spec.setdefault('zuulImageVersion', 'latest')
+        self.spec.setdefault('nodepoolImageVersion', 'latest')
+
         self.cert_manager = certmanager.CertManager(
             self.api, self.namespace, self.log)
         self.installing_cert_manager = False
@@ -266,11 +270,11 @@ class Zuul:
         for provider_name, secret_name in\
             self.nodepool_provider_secrets.items():
             kw = {
-                'zuul_version': '4.1.0',
                 'instance_name': self.name,
                 'provider_name': provider_name,
                 'nodepool_config_secret_name': secret_name,
                 'external_config': self.spec.get('externalConfig', {}),
+                'spec': self.spec,
             }
         utils.apply_file(self.api, 'nodepool-launcher.yaml',
                          namespace=self.namespace, **kw)
@@ -310,7 +314,6 @@ class Zuul:
     def create_zuul(self):
         kw = {
             'zuul_conf_sha': self.zuul_conf_sha,
-            'zuul_version': '4.1.0',
             'zuul_tenant_secret': self.tenant_secret,
             'instance_name': self.name,
             'connections': self.spec['connections'],

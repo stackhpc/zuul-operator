@@ -122,7 +122,7 @@
     - name: get buillds results
       include_tasks: tasks/zuul_web_check.yaml
       vars:
-        endpoint: "/api/tenant/local/builds"
+        endpoint: "/api/tenant/local/builds?complete=true"
 
     - name: ensure success build
       assert:

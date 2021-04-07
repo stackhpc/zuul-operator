@@ -120,7 +120,7 @@ spec:
     spec:
       containers:
       - name: scheduler
-        image: zuul/zuul-scheduler:{{ zuul_version }}
+        image: {{ spec.imagePrefix }}/zuul-scheduler:{{ spec.zuulImageVersion }}
         command: ["/usr/local/bin/zuul-scheduler", "-f", "-d"]
         ports:
         - name: gearman
@@ -200,7 +200,7 @@ spec:
     spec:
       containers:
       - name: web
-        image: zuul/zuul-web:{{ zuul_version }}
+        image: {{ spec.imagePrefix }}/zuul-web:{{ spec.zuulImageVersion }}
         ports:
         - name: zuul-web
           containerPort: 9000
@@ -252,7 +252,7 @@ spec:
         runAsGroup: 10001
       containers:
       - name: executor
-        image: zuul/zuul-executor:{{ zuul_version }}
+        image: {{ spec.imagePrefix }}/zuul-executor:{{ spec.zuulImageVersion }}
         command: ["/usr/local/bin/zuul-executor", "-f", "-d"]
         ports:
         - name: logs
@@ -335,7 +335,7 @@ spec:
         runAsGroup: 10001
       containers:
       - name: merger
-        image: zuul/zuul-merger:{{ zuul_version }}
+        image: {{ spec.imagePrefix }}/zuul-merger:{{ spec.zuulImageVersion }}
         volumeMounts:
         - name: zuul-config
           mountPath: /etc/zuul

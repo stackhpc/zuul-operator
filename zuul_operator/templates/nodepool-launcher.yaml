@@ -27,7 +27,7 @@ spec:
     spec:
       containers:
       - name: launcher
-        image: zuul/nodepool-launcher:latest
+        image: {{ spec.imagePrefix }}/nodepool-launcher:{{ spec.nodepoolImageVersion }}
         env:
         - name: KUBECONFIG
           value: /etc/kubernetes/kube.config
