@@ -181,7 +181,7 @@ metadata:
     app.kubernetes.io/part-of: zuul
     app.kubernetes.io/component: zuul-web
 spec:
-  replicas: {{ zuul_web.replicas }}
+  replicas: {{ spec.web.count }}
   selector:
     matchLabels:
       app.kubernetes.io/name: zuul
@@ -229,7 +229,7 @@ metadata:
     app.kubernetes.io/component: zuul-executor
 spec:
   serviceName: zuul-executor
-  replicas: {{ zuul_executor.replicas }}
+  replicas: {{ spec.executor.count }}
   podManagementPolicy: Parallel
   selector:
     matchLabels:
@@ -300,3 +300,57 @@ spec:
       {%- for volume in spec.get('jobVolumes', []) %}
       - {{ volume.volume | zuul_to_json }}
       {%- endfor %}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: zuul-merger
+  labels:
+    app.kubernetes.io/name: zuul
+    app.kubernetes.io/instance: {{ instance_name }}
+    app.kubernetes.io/part-of: zuul
+    app.kubernetes.io/component: zuul-merger
+spec:
+  serviceName: zuul-merger
+  replicas: {{ spec.merger.count }}
+  podManagementPolicy: Parallel
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: zuul
+      app.kubernetes.io/instance: {{ instance_name }}
+      app.kubernetes.io/part-of: zuul
+      app.kubernetes.io/component: zuul-merger
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: zuul
+        app.kubernetes.io/instance: {{ instance_name }}
+        app.kubernetes.io/part-of: zuul
+        app.kubernetes.io/component: zuul-merger
+      annotations:
+        zuulConfSha: "{{ zuul_conf_sha }}"
+    spec:
+      securityContext:
+        runAsUser: 10001
+        runAsGroup: 10001
+      containers:
+      - name: merger
+        image: zuul/zuul-merger:{{ zuul_version }}
+        volumeMounts:
+        - name: zuul-config
+          mountPath: /etc/zuul
+        - name: zuul-var
+          mountPath: /var/lib/zuul
+        - name: zookeeper-client-tls
+          mountPath: /tls/client
+          readOnly: true
+        terminationGracePeriodSeconds: 3600
+      volumes:
+      - name: zuul-var
+        emptyDir: {}
+      - name: zuul-config
+        secret:
+          secretName: zuul-config
+      - name: zookeeper-client-tls
+        secret:
+          secretName: {{ spec.zookeeper.secretName }}

@@ -67,7 +67,9 @@ class Zuul:
         self.spec.setdefault('scheduler', {})['tenant_config'] = \
             '/etc/zuul/tenant/main.yaml'
 
-        ex = self.spec.setdefault('executor', {})
+        self.spec.setdefault('executor', {}).setdefault('count', 1)
+        self.spec.setdefault('merger', {}).setdefault('count', 0)
+        self.spec.setdefault('web', {}).setdefault('count', 1)
 
         self.cert_manager = certmanager.CertManager(
             self.api, self.namespace, self.log)
@@ -293,12 +295,6 @@ class Zuul:
         kw = {
             'zuul_conf_sha': self.zuul_conf_sha,
             'zuul_version': '4.1.0',
-            'zuul_web': {
-                'replicas': 3,
-            },
-            'zuul_executor': {
-                'replicas': 3,
-            },
             'zuul_tenant_secret': self.tenant_secret,
             'instance_name': self.name,
             'connections': self.spec['connections'],
