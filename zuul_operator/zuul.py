@@ -39,23 +39,27 @@ class Zuul:
         db_secret = spec.get('database', {}).get('secretName')
         if db_secret:
             self.db_secret = db_secret
-            self.db_key = spec.get('database', {}).get('key', 'dburi')
             self.manage_db = False
         else:
             self.db_secret = 'zuul-db'
-            self.db_key = 'dburi'
             self.manage_db = True
 
         self.nodepool_secret = spec.get('launcher', {}).get('config',{}).\
             get('secretName')
-        zk_str = spec.get('zookeeper', {}).get('connectionString')
-        zk_tls = spec.get('zookeeper', {}).get('secretName')
+
+        zk_spec = self.spec.setdefault('zookeeper', {})
+        zk_str = spec.get('zookeeper', {}).get('hosts')
         if zk_str:
-            self.zk_str = zk_str
-            self.zk_tls = zk_tls
             self.manage_zk = False
         else:
+            zk_str = f'zookeeper.{self.namespace}:2281'
+            zk_spec['hosts'] = zk_str
+            zk_spec['secretName'] = 'zookeeper-client-tls'
             self.manage_zk = True
+
+        zk_spec['tls_ca'] = '/tls/client/ca.crt'
+        zk_spec['tls_cert'] = '/tls/client/tls.crt'
+        zk_spec['tls_key'] = '/tls/client/tls.key'
 
         self.tenant_secret = spec.get('scheduler', {}).\
             get('config', {}).get('secretName')
@@ -128,13 +132,14 @@ class Zuul:
             obj = objects.Secret.objects(self.api).\
                 filter(namespace=self.namespace).\
                 get(name=self.db_secret)
-            uri = base64.b64decode(obj.obj['data'][self.db_key]).decode('utf8')
+            uri = base64.b64decode(obj.obj['data']['dburi']).decode('utf8')
             return uri
         except pykube.exceptions.ObjectDoesNotExist:
             return None
 
     def write_zuul_conf(self):
         dburi = self.get_db_uri()
+        self.spec.setdefault('database', {})['dburi'] = dburi
 
         for volume in self.spec.get('jobVolumes', []):
             key = f"{volume['context']}_{volume['access']}_paths"
@@ -159,9 +164,7 @@ class Zuul:
                         v = base64.b64decode(v)
                     connection[k] = v
 
-        kw = {'dburi': dburi,
-              'namespace': self.namespace,
-              'connections': connections,
+        kw = {'connections': connections,
               'spec': self.spec}
 
         env = jinja2.Environment(
@@ -178,6 +181,22 @@ class Zuul:
 
         utils.update_secret(self.api, self.namespace, 'zuul-config',
                             string_data={'zuul.conf': text})
+
+    def parse_zk_string(self, hosts):
+        if '/' in hosts:
+            hosts, chroot = hosts.split('/', 1)
+        else:
+            chroot = None
+        hosts = hosts.split(',')
+        ret = []
+        for entry in hosts:
+            host, port = entry.rsplit(':', 1)
+            server = {'host': host,
+                      'port': port}
+            if chroot:
+                server['chroot'] = chroot
+            ret.append(server)
+        return ret
 
     def write_nodepool_conf(self):
         self.nodepool_provider_secrets = {}
@@ -197,10 +216,9 @@ class Zuul:
         # Shard the config so we can create a deployment + secret for
         # each provider.
         nodepool_yaml = yaml.safe_load(base64.b64decode(obj.obj['data']['nodepool.yaml']))
-        nodepool_yaml['zookeeper-servers'] = [
-            {'host': f'zookeeper.{self.namespace}',
-             'port': 2281},
-        ]
+
+        nodepool_yaml['zookeeper-servers'] = self.parse_zk_string(
+            self.spec['zookeeper']['hosts'])
         nodepool_yaml['zookeeper-tls'] = {
             'cert': '/tls/client/tls.crt',
             'key': '/tls/client/tls.key',
@@ -284,6 +302,8 @@ class Zuul:
             'executor_ssh_secret': self.spec['executor'].get(
                 'sshkey', {}).get('secretName'),
             'spec': self.spec,
+            'manage_zk': self.manage_zk,
+            'manage_db': self.manage_db,
         }
         utils.apply_file(self.api, 'zuul.yaml', namespace=self.namespace, **kw)
         self.create_nodepool()

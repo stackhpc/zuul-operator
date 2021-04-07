@@ -1,3 +1,4 @@
+{%- if manage_zk %}
 ---
 apiVersion: cert-manager.io/v1alpha2
 kind: Certificate
@@ -20,6 +21,7 @@ spec:
   issuerRef:
     name: ca-issuer
     kind: Issuer
+{%- endif %}
 ---
 apiVersion: v1
 kind: Service
@@ -289,7 +291,7 @@ spec:
           secretName: zuul-config
       - name: zookeeper-client-tls
         secret:
-          secretName: zookeeper-client-tls
+          secretName: {{ spec.zookeeper.secretName }}
       {%- if executor_ssh_secret %}
       - name: nodepool-private-key
         secret:
