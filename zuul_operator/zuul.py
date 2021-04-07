@@ -64,6 +64,9 @@ class Zuul:
         self.tenant_secret = spec.get('scheduler', {}).\
             get('config', {}).get('secretName')
 
+        self.spec.setdefault('scheduler', {})['tenant_config'] = \
+            '/etc/zuul/tenant/main.yaml'
+
         ex = self.spec.setdefault('executor', {})
 
         self.cert_manager = certmanager.CertManager(
