@@ -90,6 +90,28 @@ spec:
     app.kubernetes.io/part-of: zuul
     app.kubernetes.io/component: zuul-web
 ---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zuul-fingergw
+  labels:
+    app.kubernetes.io/name: zuul
+    app.kubernetes.io/instance: {{ instance_name }}
+    app.kubernetes.io/part-of: zuul
+    app.kubernetes.io/component: zuul-fingergw
+spec:
+  type: NodePort
+  ports:
+  - name: zuul-fingergw
+    port: 9079
+    protocol: TCP
+    targetPort: zuul-web
+  selector:
+    app.kubernetes.io/name: zuul
+    app.kubernetes.io/instance: {{ instance_name }}
+    app.kubernetes.io/part-of: zuul
+    app.kubernetes.io/component: zuul-fingergw
+---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -204,6 +226,53 @@ spec:
         ports:
         - name: zuul-web
           containerPort: 9000
+        volumeMounts:
+        - name: zuul-config
+          mountPath: /etc/zuul
+        - name: zookeeper-client-tls
+          mountPath: /tls/client
+          readOnly: true
+      volumes:
+      - name: zuul-config
+        secret:
+          secretName: zuul-config
+      - name: zookeeper-client-tls
+        secret:
+          secretName: zookeeper-client-tls
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zuul-fingergw
+  labels:
+    app.kubernetes.io/name: zuul
+    app.kubernetes.io/instance: {{ instance_name }}
+    app.kubernetes.io/part-of: zuul
+    app.kubernetes.io/component: zuul-fingergw
+spec:
+  replicas: {{ spec.fingergw.count }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: zuul
+      app.kubernetes.io/instance: {{ instance_name }}
+      app.kubernetes.io/part-of: zuul
+      app.kubernetes.io/component: zuul-fingergw
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: zuul
+        app.kubernetes.io/instance: {{ instance_name }}
+        app.kubernetes.io/part-of: zuul
+        app.kubernetes.io/component: zuul-fingergw
+      annotations:
+        zuulConfSha: "{{ zuul_conf_sha }}"
+    spec:
+      containers:
+      - name: fingergw
+        image: {{ spec.imagePrefix }}/zuul-fingergw:{{ spec.zuulImageVersion }}
+        ports:
+        - name: zuul-fingergw
+          containerPort: 9079
         volumeMounts:
         - name: zuul-config
           mountPath: /etc/zuul
