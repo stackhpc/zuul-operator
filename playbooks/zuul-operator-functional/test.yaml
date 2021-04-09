@@ -1,26 +1,24 @@
 - name: run functional tst
   hosts: all
-  pre_tasks:
-    - name: install git
-      become: yes
-      package:
-        name:
-          - git
-          - jq
-
-    - name: install websocket client
-      become: yes
-      command: python3 -m pip install websocket-client
-
   tasks:
-    - name: get rest api url
-      command: kubectl get svc zuul-web -o jsonpath='{.spec.clusterIP}'
-      register: zuul_web_ip
+    - name: Create temp git root directory
+      tempfile:
+        state: directory
+      register: git_root
+
+    - name: get cluster ip
+      command: /tmp/minikube ip
+      register: minikube_ip
+      failed_when: false
+
+    - name: set cluster ip
+      set_fact:
+        cluster_ip: "{{ cluster_ip | default(minikube_ip.stdout_lines[0]) }}"
 
     - name: set fact zuul_web_url
       set_fact:
-        zuul_web_url: "http://{{ zuul_web_ip.stdout_lines[0] }}:9000"
-        zuul_ws_url: "ws://{{ zuul_web_ip.stdout_lines[0] }}:9000"
+        zuul_web_url: "http://{{ cluster_ip }}"
+        zuul_ws_url: "ws://{{ cluster_ip }}"
 
     - name: ensure zuul web api is working
       when: skip_check is not defined
@@ -34,6 +32,14 @@
 
     - name: setup git service
       include_tasks: tasks/git_setup.yaml
+
+    - name: get git-server port
+      command: kubectl get svc git-server -o jsonpath='{.spec.ports[0].nodePort}'
+      register: git_server_port
+
+    - name: set git-server port
+      set_fact:
+        git_server_port: '{{ git_server_port.stdout_lines[0] }}'
 
     - name: create a config project
       include_tasks: tasks/create_config.yaml
@@ -83,7 +89,7 @@
                   baseurl: https://opendev.org
                   driver: git
                 local-git:
-                  baseurl: "git://{{ ansible_all_ipv4_addresses[0] }}/"
+                  baseurl: "git://git-server.default/"
                   driver: git
               externalConfig:
                 kubernetes:
@@ -131,7 +137,7 @@
 
     - name: connect to console-stream
       command: |
-        python3 /usr/local/bin/wsdump.py -r --eof-wait 5 -t '{"uuid":"{{ _job_uuid.stdout_lines[0] }}","logfile":"console.log"}' {{ zuul_ws_url }}/api/tenant/local/console-stream
+        wsdump -r --eof-wait 5 -t '{"uuid":"{{ _job_uuid.stdout_lines[0] }}","logfile":"console.log"}' {{ zuul_ws_url }}/api/tenant/local/console-stream
       register: console_stream
 
     - name: show console stream

@@ -1,34 +1,61 @@
-
 - name: setup gitconfig
   shell: |
     if ! test -f ~/.gitconfig && ! test -d ~/.config/git ; then
       git config --global user.email "you@example.com"
       git config --global user.name "Your Name"
     fi
-    sudo mkdir -p /srv/git
 
-- name: setup local-git service
-  become: yes
-  copy:
-    dest: /etc/systemd/system/local-git.service
-    content: |
-      [Unit]
-      Description=local git service
-      After=syslogp.target network.target
+- k8s:
+    namespace: default
+    definition:
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: git-server
+      spec:
+        replicas: 1
+        selector:
+          matchLabels:
+            app: git-server
+        template:
+          metadata:
+            labels:
+              app: git-server
+          spec:
+            volumes:
+            - name: git-repos
+              emptyDir: {}
+            containers:
+            - name: git-server
+              image: docker.io/sdelrio/git-daemon:latest
+              ports:
+              - containerPort: 9418
+              volumeMounts:
+              - name: git-repos
+                mountPath: /git
+            initContainers:
+            - name: init-config
+              image: docker.io/sdelrio/git-daemon:latest
+              command: ['/usr/bin/git', 'init', '--bare', '/git/config']
+              volumeMounts:
+              - name: git-repos
+                mountPath: /git
 
-      [Service]
-      Type=simple
-      SyslogIdentifier=local-git
-      ExecStart=/usr/bin/git daemon --export-all --reuseaddr --verbose --base-path=/srv/git/ /srv/git/
-      Restart=always
-      RestartSec=3s
+- k8s:
+    namespace: default
+    definition:
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: git-server
+        labels:
+          app: git-server
+      spec:
+        type: NodePort
+        ports:
+          - port: 9418
+        selector:
+          app: git-server
 
-      [Install]
-      WantedBy=multi-user.target
-
-- name: start local-git service
-  become: yes
-  systemd:
-    daemon_reload: true
-    name: "local-git"
-    state: started
+- name: Wait for scheduler deployment
+  command: timeout 10m kubectl rollout status deployment/git-server

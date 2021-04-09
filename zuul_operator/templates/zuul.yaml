@@ -76,7 +76,7 @@ metadata:
     app.kubernetes.io/part-of: zuul
     app.kubernetes.io/component: zuul-web
 spec:
-  #type: NodePort
+  type: NodePort
   ports:
   - name: zuul-web
     port: 9000

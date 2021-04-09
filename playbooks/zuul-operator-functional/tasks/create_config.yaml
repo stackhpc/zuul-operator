@@ -1,13 +1,11 @@
 - name: create config directory
-  become: yes
-  file:
-    path: /srv/git/config/
-    state: directory
-    mode: 0777
+  command: "git clone git://{{ cluster_ip }}:{{ git_server_port }}/config"
+  args:
+    chdir: "{{ git_root.path }}"
 
 - name: copy config content
   copy:
-    dest: "/srv/git/config/{{ item.name }}"
+    dest: "{{ git_root.path }}/config/{{ item.name }}"
     content: "{{ item.content }}"
   loop:
     - name: zuul.yaml
@@ -55,7 +53,10 @@
 
 - name: commit config
   shell: |
-    cd /srv/git/config/
-    test -d .git || git init .
+    set -x
+
     git add *.yaml
     git commit -m 'Setup config project' || true
+    git push --set-upstream git://{{ cluster_ip }}:{{ git_server_port }}/config master
+  args:
+    chdir: "{{ git_root.path }}/config"

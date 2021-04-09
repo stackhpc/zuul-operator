@@ -2,6 +2,6 @@
   uri:
     url: "{{ zuul_web_url }}{{ endpoint }}"
   register: result
-  until: "result.json is defined and result.json{% if expected is defined %} and result.json == expected{% endif %}"
+  until: "result.json is defined and result.json and (expected is not defined or result.json == expected)"
   retries: 600
   delay: 1
