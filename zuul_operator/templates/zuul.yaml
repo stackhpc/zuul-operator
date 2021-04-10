@@ -298,21 +298,3 @@ spec:
       {%- for volume in spec.get('jobVolumes', []) %}
       - {{ volume.volume | zuul_to_json }}
       {%- endfor %}
----
-apiVersion: networking.k8s.io/v1beta1
-kind: Ingress
-metadata:
-  name: zuul-ingress
-  labels:
-    app.kubernetes.io/name: zuul
-    app.kubernetes.io/instance: {{ instance_name }}
-    app.kubernetes.io/part-of: zuul
-    app.kubernetes.io/component: zuul-web
-spec:
-  rules:
-  - http:
-      paths:
-      - path: /
-        backend:
-          serviceName: zuul-web
-          servicePort: 9000

@@ -1,6 +1,9 @@
 - name: run functional tst
   hosts: all
   tasks:
+    - name: Install ingress
+      include_tasks: tasks/ingress.yaml
+
     - name: Create temp git root directory
       tempfile:
         state: directory
