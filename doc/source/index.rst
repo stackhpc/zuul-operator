@@ -182,6 +182,17 @@ are used:
 See the reference documentation for the specific `secretName` entry
 for details.
 
+Zuul Preview
+------------
+
+The operator has optional support for deploying a zuul-preview
+service.  This is an experimental add-on for Zuul to serve Zuul
+artifacts from the root of a domain (this can be useful for serving
+static HTML/Javascript sites).  If you enable this, the operator will
+configure a ``zuul-preview`` service to which you may route an Ingress
+or LoadBalancer.
+
+
 Specification Reference
 -----------------------
 
@@ -254,6 +265,11 @@ verbatim):
          :default: latest
 
          The image tag to append to the Zuul images.
+
+      .. attr:: zuulPreviewImageVersion
+         :default: latest
+
+         The image tag to append to the Zuul Preview images.
 
       .. attr:: nodepoolImageVersion
          :default: latest
@@ -458,3 +474,10 @@ verbatim):
          .. attr:: volume
 
             A mapping corresponding to a Kubernetes volume.
+
+      .. attr:: preview
+
+         .. attr:: count
+            :default: 0
+
+            How many Zuul Preview servers to manage.

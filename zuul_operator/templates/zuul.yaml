@@ -423,3 +423,60 @@ spec:
       - name: zookeeper-client-tls
         secret:
           secretName: {{ spec.zookeeper.secretName }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zuul-preview
+  labels:
+    app.kubernetes.io/name: zuul
+    app.kubernetes.io/instance: {{ instance_name }}
+    app.kubernetes.io/part-of: zuul
+    app.kubernetes.io/component: zuul-preview
+spec:
+  type: NodePort
+  ports:
+  - name: zuul-preview
+    port: 80
+    protocol: TCP
+    targetPort: zuul-preview
+  selector:
+    app.kubernetes.io/name: zuul
+    app.kubernetes.io/instance: {{ instance_name }}
+    app.kubernetes.io/part-of: zuul
+    app.kubernetes.io/component: zuul-preview
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zuul-preview
+  labels:
+    app.kubernetes.io/name: zuul
+    app.kubernetes.io/instance: {{ instance_name }}
+    app.kubernetes.io/part-of: zuul
+    app.kubernetes.io/component: zuul-preview
+spec:
+  replicas: {{ spec.preview.count }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: zuul
+      app.kubernetes.io/instance: {{ instance_name }}
+      app.kubernetes.io/part-of: zuul
+      app.kubernetes.io/component: zuul-preview
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: zuul
+        app.kubernetes.io/instance: {{ instance_name }}
+        app.kubernetes.io/part-of: zuul
+        app.kubernetes.io/component: zuul-preview
+    spec:
+      containers:
+      - name: preview
+        image: {{ spec.imagePrefix }}/zuul-preview:{{ spec.zuulPreviewImageVersion }}
+        ports:
+        - name: zuul-preview
+          containerPort: 80
+        env:
+        - name: ZUUL_API_URL
+          value: http://zuul-web/

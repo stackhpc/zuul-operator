@@ -153,3 +153,6 @@
       # when: "'Demo job is running' not in console_stream.stdout"
       fail:
         msg: "Task output is missing from: {{ console_stream.stdout }}"
+
+    - name: Test the preview
+      include_tasks: ./tasks/test_preview.yaml
