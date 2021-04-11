@@ -16,6 +16,8 @@
       include_tasks: tasks/apply_cr.yaml
       vars:
         spec:
+          database:
+            allowUnsafeConfig: true
           executor:
             count: 1
             sshkey:

@@ -320,6 +320,15 @@ verbatim):
 
             The key name in the secret should be ``dburi``.
 
+         .. attr:: allowUnsafeConfig
+            :default: False
+
+            If you are running in a resource constrained environment
+            (such as minikube), the requested resource values for the
+            Percona XtraDB may be too large.  Set this to True to
+            override the default values and construct the cluster
+            regardless.  Only use this for testing.
+
       .. attr:: zookeeper
 
          This is not required unless you want to manage the ZooKeeper
