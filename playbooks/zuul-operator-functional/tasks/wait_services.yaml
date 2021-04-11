@@ -25,7 +25,3 @@
   until: "'Starting PoolWorker' in _launcher_log.stdout"
   delay: 10
   retries: 48
-
-- name: Wait an extra 2 minutes for the services to settle
-  pause:
-    minutes: 2
