@@ -12,6 +12,7 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+import kopf
 import copy
 import base64
 import hashlib
@@ -72,10 +73,17 @@ class Zuul:
         self.spec.setdefault('web', {}).setdefault('count', 1)
         self.spec.setdefault('fingergw', {}).setdefault('count', 1)
         self.spec.setdefault('preview', {}).setdefault('count', 0)
+        registry = self.spec.setdefault('registry', {})
+        registry.setdefault('count', 0)
+        registry.setdefault('volumeSize', '80Gi')
+        registry_tls = registry.setdefault('tls', {})
+        self.manage_registry_cert = ('secretName' not in registry_tls)
+        registry_tls.setdefault('secretName', 'zuul-registry-tls')
 
         self.spec.setdefault('imagePrefix', 'docker.io/zuul')
         self.spec.setdefault('zuulImageVersion', 'latest')
         self.spec.setdefault('zuulPreviewImageVersion', 'latest')
+        self.spec.setdefault('zuulRegistryImageVersion', 'latest')
         self.spec.setdefault('nodepoolImageVersion', 'latest')
 
         self.cert_manager = certmanager.CertManager(
@@ -314,7 +322,55 @@ class Zuul:
             except pykube.exceptions.ObjectDoesNotExist:
                 pass
 
+    def write_registry_conf(self):
+        config_secret = self.spec['registry'].get('config', {}).get('secretName')
+        if not config_secret:
+            raise kopf.PermanentError("No registry config secret found")
+
+        try:
+            obj = objects.Secret.objects(self.api).\
+                filter(namespace=self.namespace).\
+                get(name=config_secret)
+        except pykube.exceptions.ObjectDoesNotExist:
+            raise kopf.TemporaryError("Registry config secret not found")
+
+        # Shard the config so we can create a deployment + secret for
+        # each provider.
+        registry_yaml = yaml.safe_load(base64.b64decode(
+            obj.obj['data']['registry.yaml']))
+
+        reg = registry_yaml['registry']
+        if 'public-url' not in reg:
+            reg['public-url'] = 'https://zuul-registry'
+        reg['address'] = '0.0.0.0'
+        reg['port'] = 9000
+        reg['tls-cert'] = '/tls/tls.crt'
+        reg['tls-key'] = '/tls/tls.key'
+        reg['secret'] = utils.generate_password(56)
+        reg['storage'] = {
+            'driver': 'filesystem',
+            'root': '/storage',
+        }
+
+        text = yaml.dump(registry_yaml)
+        utils.update_secret(self.api, self.namespace,
+                            'zuul-registry-generated-config',
+                            string_data={'registry.yaml': text})
+
+    def create_registry(self):
+        self.write_registry_conf()
+        kw = {
+            'instance_name': self.name,
+            'spec': self.spec,
+            'manage_registry_cert': self.manage_registry_cert,
+        }
+        utils.apply_file(self.api, 'zuul-registry.yaml',
+                         namespace=self.namespace, **kw)
+
     def create_zuul(self):
+        if self.spec['registry']['count']:
+            self.create_registry()
+
         kw = {
             'zuul_conf_sha': self.zuul_conf_sha,
             'zuul_tenant_secret': self.tenant_secret,

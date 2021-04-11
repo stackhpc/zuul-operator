@@ -1,0 +1,107 @@
+{%- if manage_registry_cert %}
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: zuul-registry-tls
+  labels:
+    app.kubernetes.io/name: zuul
+    app.kubernetes.io/instance: {{ instance_name }}
+    app.kubernetes.io/part-of: zuul
+    app.kubernetes.io/component: zuul-registry-tls
+spec:
+  keyEncoding: pkcs8
+  secretName: zuul-registry-tls
+  commonName: client
+  usages:
+    - digital signature
+    - key encipherment
+    - server auth
+    - client auth
+  issuerRef:
+    name: ca-issuer
+    kind: Issuer
+{%- endif %}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zuul-registry
+  labels:
+    app.kubernetes.io/name: zuul
+    app.kubernetes.io/instance: {{ instance_name }}
+    app.kubernetes.io/part-of: zuul
+    app.kubernetes.io/component: zuul-registry
+spec:
+  type: NodePort
+  ports:
+  - name: zuul-registry
+    port: 443
+    protocol: TCP
+    targetPort: registry
+  selector:
+    app.kubernetes.io/name: zuul
+    app.kubernetes.io/instance: {{ instance_name }}
+    app.kubernetes.io/part-of: zuul
+    app.kubernetes.io/component: zuul-registry
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: zuul-registry
+  labels:
+    app.kubernetes.io/name: zuul
+    app.kubernetes.io/instance: {{ instance_name }}
+    app.kubernetes.io/part-of: zuul
+    app.kubernetes.io/component: zuul-registry
+spec:
+  replicas: {{ spec.registry.count }}
+  serviceName: zuul-registry
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: zuul
+      app.kubernetes.io/instance: {{ instance_name }}
+      app.kubernetes.io/part-of: zuul
+      app.kubernetes.io/component: zuul-registry
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: zuul
+        app.kubernetes.io/instance: {{ instance_name }}
+        app.kubernetes.io/part-of: zuul
+        app.kubernetes.io/component: zuul-registry
+    spec:
+      containers:
+      - name: registry
+        image: {{ spec.imagePrefix }}/zuul-registry:{{ spec.zuulImageVersion }}
+        env:
+        - name: DEBUG
+          value: '1'
+        ports:
+        - name: registry
+          containerPort: 9000
+        volumeMounts:
+        - name: zuul-registry-config
+          mountPath: /conf
+          readOnly: true
+        - name: zuul-registry-tls
+          mountPath: /tls
+          readOnly: true
+        - name: zuul-registry
+          mountPath: /storage
+      volumes:
+      - name: zuul-registry-config
+        secret:
+          secretName: zuul-registry-generated-config
+      - name: zuul-registry-tls
+        secret:
+          secretName: {{ spec.registry.tls.secretName }}
+  volumeClaimTemplates:
+  - metadata:
+      name: zuul-registry
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: {{ spec.registry.volumeSize }} #80Gi

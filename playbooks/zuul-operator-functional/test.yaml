@@ -156,3 +156,6 @@
 
     - name: Test the preview
       include_tasks: ./tasks/test_preview.yaml
+
+    - name: Test the registry
+      include_tasks: ./tasks/test_registry.yaml
