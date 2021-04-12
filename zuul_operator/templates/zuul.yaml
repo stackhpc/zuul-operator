@@ -347,7 +347,7 @@ spec:
         {%- endfor %}
         securityContext:
           privileged: true
-        terminationGracePeriodSeconds: 3600
+        terminationGracePeriodSeconds: {{ spec.executor.terminationGracePeriodSeconds }}
         lifecycle:
           preStop:
             exec:

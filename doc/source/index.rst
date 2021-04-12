@@ -404,6 +404,16 @@ verbatim):
 
                The key name in the secret should be ``sshkey``.
 
+         .. attr:: terminationGracePeriodSeconds
+            :default: 21600
+
+            When performing a rolling restart of the executors, wait
+            this long for jobs to finish normally.  If an executor
+            takes longer than this amount of time, it will be
+            hard-stopped (and jobs will abort and retry).  The default
+            is 6 hours, but depending on the workload, a higher or
+            lower value may be appropriate.
+
       .. attr:: merger
 
          .. attr:: count
