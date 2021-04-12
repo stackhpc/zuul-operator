@@ -28,9 +28,7 @@ spec:
       containers:
       - name: launcher
         image: {{ spec.imagePrefix }}/nodepool-launcher:{{ spec.nodepoolImageVersion }}
-        env:
-        - name: KUBECONFIG
-          value: /etc/kubernetes/kube.config
+        env: {{ spec.env | zuul_to_json }}
         volumeMounts:
         - name: nodepool-config
           mountPath: /etc/nodepool

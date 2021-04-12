@@ -166,6 +166,7 @@ spec:
           readOnly: true
         {%- endif %}
         {%- endfor %}
+        env: {{ spec.env | zuul_to_json }}
       volumes:
       - name: zuul-config
         secret:
@@ -232,6 +233,7 @@ spec:
         - name: zookeeper-client-tls
           mountPath: /tls/client
           readOnly: true
+        env: {{ spec.env | zuul_to_json }}
       volumes:
       - name: zuul-config
         secret:
@@ -365,7 +367,7 @@ spec:
       - name: nodepool-private-key
         secret:
           secretName: {{ executor_ssh_secret }}
-      {%- endif %}          
+      {%- endif %}
       {%- for volume in spec.get('jobVolumes', []) %}
       - {{ volume.volume | zuul_to_json }}
       {%- endfor %}

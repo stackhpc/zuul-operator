@@ -86,6 +86,20 @@ class Zuul:
         self.spec.setdefault('zuulRegistryImageVersion', 'latest')
         self.spec.setdefault('nodepoolImageVersion', 'latest')
 
+        default_env = {
+            'KUBECONFIG': '/etc/kubernetes/kube.config'
+        }
+        env = self.spec.setdefault('env', [])
+        for default_key, default_value in default_env.items():
+            # Don't allow the user to override our defaults
+            for item in env:
+                if item.get('name') == default_key:
+                    env.remove(item)
+                    break
+            # Set our defaults
+            env.append({'name': default_key,
+                        'value': default_value})
+
         self.cert_manager = certmanager.CertManager(
             self.api, self.namespace, self.log)
         self.installing_cert_manager = False
