@@ -14,15 +14,11 @@
 
 import asyncio
 import collections
-import yaml
 
 import kopf
 import pykube
-import kubernetes
 
 from . import objects
-from . import utils
-from . import certmanager
 from .zuul import Zuul
 
 
@@ -99,7 +95,8 @@ def create_fn(spec, name, namespace, logger, **kwargs):
     zuul.write_zuul_conf()
     zuul.create_zuul()
 
-    #return {'message': 'hello world'}  # will be the new status
+    # We can set a status with something like:
+    # return {'message': 'hello world'}
 
 
 @kopf.on.update('zuuls', backoff=10)

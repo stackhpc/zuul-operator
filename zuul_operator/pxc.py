@@ -31,7 +31,7 @@ class PXC:
         kind = objects.get_object('apiextensions.k8s.io/v1beta1',
                                   'CustomResourceDefinition')
         try:
-            obj = kind.objects(self.api).\
+            kind.objects(self.api).\
                 get(name="perconaxtradbclusters.pxc.percona.com")
         except pykube.exceptions.ObjectDoesNotExist:
             return False
@@ -62,7 +62,8 @@ class PXC:
                     namespace=self.namespace,
                     selector={'app.kubernetes.io/instance': 'db-cluster',
                               'app.kubernetes.io/component': 'pxc',
-                              'app.kubernetes.io/name': 'percona-xtradb-cluster'}):
+                              'app.kubernetes.io/name':
+                              'percona-xtradb-cluster'}):
                 if obj.obj['status']['phase'] == 'Running':
                     count += 1
             if count == 3:

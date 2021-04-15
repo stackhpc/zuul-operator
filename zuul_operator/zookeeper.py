@@ -13,9 +13,6 @@
 # under the License.
 
 import time
-import base64
-
-import pykube
 
 from . import objects
 from . import utils

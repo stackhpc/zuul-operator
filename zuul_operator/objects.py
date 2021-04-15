@@ -14,6 +14,7 @@
 
 import inspect
 
+# We deliberately import * to create a superset of objects.
 from pykube.objects import *
 
 

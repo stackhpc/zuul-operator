@@ -13,3 +13,5 @@
 # under the License.
 
 from .operator import ZuulOperator
+
+__all__ = [ZuulOperator]

@@ -22,7 +22,6 @@ import jinja2
 import kubernetes
 from kubernetes.client import Configuration
 from kubernetes.client.api import core_v1_api
-from kubernetes.client.rest import ApiException
 from kubernetes.stream import stream
 
 from . import objects
