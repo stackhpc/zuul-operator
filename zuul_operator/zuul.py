@@ -142,6 +142,21 @@ class Zuul:
         except pykube.exceptions.ObjectDoesNotExist:
             return None
 
+    def get_keystore_password(self):
+        secret_name = 'zuul-keystore'
+        secret_key = 'password'
+        try:
+            obj = objects.Secret.objects(self.api).\
+                filter(namespace=self.namespace).\
+                get(name=secret_name)
+            pw = base64.b64decode(obj.obj['data'][secret_key]).decode('utf8')
+            return pw
+        except pykube.exceptions.ObjectDoesNotExist:
+            pw = utils.generate_password(512)
+            utils.update_secret(self.api, self.namespace, secret_name,
+                                string_data={secret_key: pw})
+            return pw
+
     def write_zuul_conf(self):
         dburi = self.get_db_uri()
         self.spec.setdefault('database', {})['dburi'] = dburi
@@ -170,7 +185,8 @@ class Zuul:
                     connection[k] = v
 
         kw = {'connections': connections,
-              'spec': self.spec}
+              'spec': self.spec,
+              'keystore_password': self.get_keystore_password()}
 
         env = jinja2.Environment(
             loader=jinja2.PackageLoader('zuul_operator', 'templates'))
