@@ -27,7 +27,7 @@
             name: pod-fedora
             nodes:
               - name: container
-                label: pod-fedora-32
+                label: pod-fedora-34
 
         - job:
             name: test-job
