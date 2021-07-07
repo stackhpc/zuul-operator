@@ -304,8 +304,8 @@ class Zuul:
                 'external_config': self.spec.get('externalConfig', {}),
                 'spec': self.spec,
             }
-        utils.apply_file(self.api, 'nodepool-launcher.yaml',
-                         namespace=self.namespace, **kw)
+            utils.apply_file(self.api, 'nodepool-launcher.yaml',
+                             namespace=self.namespace, **kw)
 
         # Get current providers
         providers = objects.Deployment.objects(self.api).filter(
