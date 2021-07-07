@@ -23,32 +23,60 @@
               - name: container
                 label: pod-fedora-32
 
+        - nodeset:
+            name: ubuntu-focal
+            nodes:
+              - name: ubuntu-focal
+                label: ubuntu-focal
+
         - job:
-            name: test-job
-            run: test.yaml
+            name: test-pod
+            run: test-pod.yaml
             # skip zuul-base-jobs for now as it doesn't work with kubectl
             roles:
               - zuul: zuul/zuul-jobs
             parent: null
             nodeset: pod-fedora
 
+        - job:
+            name: test-static-node
+            run: test-static-node.yaml
+            roles:
+              - zuul: zuul/zuul-jobs
+            parent: null
+            nodeset: ubuntu-focal
+
         - project:
             periodic:
               jobs:
-                - test-job
+                - test-pod
+                - test-static-node
 
-    - name: test.yaml
+    - name: test-pod.yaml
       content: |
         - hosts: localhost
           tasks:
-            - include_role:
-                name: start-zuul-console
-            - debug: msg='Demo job is running'
             - name: check job volume
               stat:
                 path: /system-dbus
               register: _job_volume
               failed_when: not _job_volume.stat.isdir
+        - hosts: container
+          tasks:
+            - include_role:
+                name: start-zuul-console
+            - debug: msg='Demo job is running on container'
+            - shell: id
+            - pause: seconds=30
+
+    - name: test-static-node.yaml
+      content: |
+        - hosts: all
+          tasks:
+            - include_role:
+                name: start-zuul-console
+            - debug: msg='Demo job is running on static node'
+            - shell: id
             - pause: seconds=30
 
 - name: commit config

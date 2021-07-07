@@ -1,5 +1,8 @@
 - name: run functional tst
   hosts: all
+  vars:
+    zuul_work_dir: "{{ zuul.projects['opendev.org/zuul/zuul-operator'].src_dir }}"
+    runtime: minikube
   tasks:
     - name: Install ingress
       include_tasks: tasks/ingress.yaml
@@ -10,13 +13,24 @@
       register: git_root
 
     - name: get cluster ip
+      when: runtime == 'minikube'
       command: /tmp/minikube ip
-      register: minikube_ip
-      failed_when: false
+      register: _cluster_ip
 
     - name: set cluster ip
+      when: runtime == 'minikube'
       set_fact:
-        cluster_ip: "{{ cluster_ip | default(minikube_ip.stdout_lines[0]) }}"
+        cluster_ip: "{{ _cluster_ip.stdout_lines[0] }}"
+
+    - name: get cluster ip
+      when: runtime == 'kind'
+      command: docker inspect -f "{% raw %}{{ .NetworkSettings.IPAddress }}{% endraw %}" kind-control-plane
+      register: _cluster_ip
+
+    - name: set cluster ip
+      when: runtime == 'kind'
+      set_fact:
+        cluster_ip: "{{ _cluster_ip.stdout_lines[0] }}"
 
     - name: set fact zuul_web_url
       set_fact:
@@ -121,6 +135,14 @@
             # 1 queue means a job is running
             queue: 1
 
+    - name: get build results
+      uri:
+        url: "{{ zuul_web_url }}/api/tenant/local/builds?complete=true"
+      register: result
+      until: "result.json is defined and result.json and (result.json|length) > 1"
+      retries: 600
+      delay: 1
+
     - name: get buillds results
       include_tasks: tasks/zuul_web_check.yaml
       vars:
@@ -130,13 +152,14 @@
       assert:
         that:
           - result.json[0].result == 'SUCCESS'
+          - result.json[1].result == 'SUCCESS'
 
     - name: grab job uuid
       shell: |
         curl -s {{ zuul_web_url }}/api/tenant/local/status | jq -r '.pipelines[].change_queues[].heads[][].jobs[].uuid'
       register: _job_uuid
       # Wait until the executor start the job
-      until: _job_uuid.stdout != "" and _job_uuid.stdout != "null"
+      until: _job_uuid.stdout != "" and "null" not in _job_uuid.stdout
       retries: 60
       delay: 1
 
