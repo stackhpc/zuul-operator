@@ -1,0 +1,6 @@
+pbr
+kopf<1.31.0
+kubernetes
+jinja2
+pymysql
+pykube-ng

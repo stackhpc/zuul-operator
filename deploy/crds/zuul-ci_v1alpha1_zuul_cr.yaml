@@ -6,7 +6,7 @@ spec:
   imagePrefix: docker.io/zuul
   executor:
     count: 1
-    ssh_key:
+    sshkey:
       secretName: executor-ssh-key
   merger:
     count: 1
@@ -19,10 +19,9 @@ spec:
     config:
       secretName: nodepool-yaml-conf
   connections:
-    gits:
-      - baseurl: https://opendev.org
-        name: opendev.org
+    opendev:
+      driver: git
+      baseurl: https://opendev.org
   externalConfig:
     kubernetes:
       secretName: nodepool-kube-config
-      key: kube.config

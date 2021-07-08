@@ -6,7 +6,7 @@ metadata:
 ---
 
 apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
+kind: ClusterRole
 metadata:
   name: zuul-operator
 rules:
@@ -23,6 +23,7 @@ rules:
   - configmaps
   - secrets
   - ingresses
+  - namespaces
   verbs:
   - create
   - delete
@@ -47,12 +48,29 @@ rules:
   - update
   - watch
 - apiGroups:
-  - monitoring.coreos.com
+  - networking.k8s.io
   resources:
-  - servicemonitors
+  - ingresses
   verbs:
-  - get
   - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - policy
+  resources:
+  - poddisruptionbudgets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
 - apiGroups:
   - apps
   resourceNames:
@@ -62,12 +80,6 @@ rules:
   verbs:
   - update
 - apiGroups:
-  - ""
-  resources:
-  - pods
-  verbs:
-  - get
-- apiGroups:
   - apps
   resources:
   - replicasets
@@ -76,6 +88,8 @@ rules:
   - get
 - apiGroups:
   - operator.zuul-ci.org
+  - cert-manager.io
+  - pxc.percona.com
   resources:
   - '*'
   verbs:
@@ -87,28 +101,24 @@ rules:
   - update
   - watch
 - apiGroups:
-  - cert-manager.io
+  - monitoring.coreos.com
   resources:
-  - '*'
+  - servicemonitors
   verbs:
-  - create
-  - delete
   - get
-  - list
-  - patch
-  - update
-  - watch
+  - create
 
 ---
 
-kind: RoleBinding
+kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: zuul-operator
 subjects:
 - kind: ServiceAccount
   name: zuul-operator
+  namespace: default
 roleRef:
-  kind: Role
-  name: zuul-operator
+  kind: ClusterRole
+  name: cluster-admin #zuul-operator
   apiGroup: rbac.authorization.k8s.io

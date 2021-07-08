@@ -1,0 +1,318 @@
+---
+apiVersion: cert-manager.io/v1alpha2
+kind: Certificate
+metadata:
+  name: zookeeper-client
+  labels:
+    app.kubernetes.io/name: zookeeper-client-certificate
+    app.kubernetes.io/instance: {{ instance_name }}
+    app.kubernetes.io/part-of: zuul
+    app.kubernetes.io/component: zookeeper-client-certificate
+spec:
+  keyEncoding: pkcs8
+  secretName: zookeeper-client-tls
+  commonName: client
+  usages:
+    - digital signature
+    - key encipherment
+    - server auth
+    - client auth
+  issuerRef:
+    name: ca-issuer
+    kind: Issuer
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zuul-executor
+  labels:
+    app.kubernetes.io/name: zuul
+    app.kubernetes.io/instance: {{ instance_name }}
+    app.kubernetes.io/part-of: zuul
+    app.kubernetes.io/component: zuul-executor
+spec:
+  type: ClusterIP
+  clusterIP: None
+  ports:
+  - name: logs
+    port: 7900
+    protocol: TCP
+    targetPort: logs
+  selector:
+    app.kubernetes.io/name: zuul
+    app.kubernetes.io/instance: {{ instance_name }}
+    app.kubernetes.io/part-of: zuul
+    app.kubernetes.io/component: zuul-executor
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zuul-gearman
+  labels:
+    app.kubernetes.io/name: zuul
+    app.kubernetes.io/instance: {{ instance_name }}
+    app.kubernetes.io/part-of: zuul
+    app.kubernetes.io/component: zuul-scheduler
+spec:
+  type: ClusterIP
+  ports:
+  - name: gearman
+    port: 4730
+    protocol: TCP
+    targetPort: gearman
+  selector:
+    app.kubernetes.io/name: zuul
+    app.kubernetes.io/instance: {{ instance_name }}
+    app.kubernetes.io/part-of: zuul
+    app.kubernetes.io/component: zuul-scheduler
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zuul-web
+  labels:
+    app.kubernetes.io/name: zuul
+    app.kubernetes.io/instance: {{ instance_name }}
+    app.kubernetes.io/part-of: zuul
+    app.kubernetes.io/component: zuul-web
+spec:
+  #type: NodePort
+  ports:
+  - name: zuul-web
+    port: 9000
+    protocol: TCP
+    targetPort: zuul-web
+  selector:
+    app.kubernetes.io/name: zuul
+    app.kubernetes.io/instance: {{ instance_name }}
+    app.kubernetes.io/part-of: zuul
+    app.kubernetes.io/component: zuul-web
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: zuul-scheduler
+  labels:
+    app.kubernetes.io/name: zuul
+    app.kubernetes.io/instance: {{ instance_name }}
+    app.kubernetes.io/part-of: zuul
+    app.kubernetes.io/component: zuul-scheduler
+spec:
+  replicas: 1
+  serviceName: zuul-scheduler
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: zuul
+      app.kubernetes.io/instance: {{ instance_name }}
+      app.kubernetes.io/part-of: zuul
+      app.kubernetes.io/component: zuul-scheduler
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: zuul
+        app.kubernetes.io/instance: {{ instance_name }}
+        app.kubernetes.io/part-of: zuul
+        app.kubernetes.io/component: zuul-scheduler
+      annotations:
+        zuulConfSha: "{{ zuul_conf_sha }}"
+    spec:
+      containers:
+      - name: scheduler
+        image: zuul/zuul-scheduler:{{ zuul_version }}
+        command: ["/usr/local/bin/zuul-scheduler", "-f", "-d"]
+        ports:
+        - name: gearman
+          containerPort: 4730
+        volumeMounts:
+        - name: zuul-config
+          mountPath: /etc/zuul
+          readOnly: true
+        - name: zuul-tenant-config
+          mountPath: /etc/zuul/tenant
+          readOnly: true
+        - name: zuul-scheduler
+          mountPath: /var/lib/zuul
+        - name: zookeeper-client-tls
+          mountPath: /tls/client
+          readOnly: true
+        {%- for connection_name, connection in connections.items() %}
+        {%- if 'secretName' in connection %}
+        - name: connection-{{ connection_name }}
+          mountPath: /etc/zuul/connections/{{ connection_name }}
+          readOnly: true
+        {%- endif %}
+        {%- endfor %}
+      volumes:
+      - name: zuul-config
+        secret:
+          secretName: zuul-config
+      - name: zuul-tenant-config
+        secret:
+          secretName: {{ zuul_tenant_secret }}
+      - name: zookeeper-client-tls
+        secret:
+          secretName: zookeeper-client-tls
+      {%- for connection_name, connection in connections.items() %}
+      {%- if 'secretName' in connection %}
+      - name: connection-{{ connection_name }}
+        secret:
+          secretName: {{ connection['secretName'] }}
+      {%- endif %}
+      {%- endfor %}
+  volumeClaimTemplates:
+  - metadata:
+      name: zuul-scheduler
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: 80Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zuul-web
+  labels:
+    app.kubernetes.io/name: zuul
+    app.kubernetes.io/instance: {{ instance_name }}
+    app.kubernetes.io/part-of: zuul
+    app.kubernetes.io/component: zuul-web
+spec:
+  replicas: {{ zuul_web.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: zuul
+      app.kubernetes.io/instance: {{ instance_name }}
+      app.kubernetes.io/part-of: zuul
+      app.kubernetes.io/component: zuul-web
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: zuul
+        app.kubernetes.io/instance: {{ instance_name }}
+        app.kubernetes.io/part-of: zuul
+        app.kubernetes.io/component: zuul-web
+      annotations:
+        zuulConfSha: "{{ zuul_conf_sha }}"
+    spec:
+      containers:
+      - name: web
+        image: zuul/zuul-web:{{ zuul_version }}
+        ports:
+        - name: zuul-web
+          containerPort: 9000
+        volumeMounts:
+        - name: zuul-config
+          mountPath: /etc/zuul
+        - name: zookeeper-client-tls
+          mountPath: /tls/client
+          readOnly: true
+      volumes:
+      - name: zuul-config
+        secret:
+          secretName: zuul-config
+      - name: zookeeper-client-tls
+        secret:
+          secretName: zookeeper-client-tls
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: zuul-executor
+  labels:
+    app.kubernetes.io/name: zuul
+    app.kubernetes.io/instance: {{ instance_name }}
+    app.kubernetes.io/part-of: zuul
+    app.kubernetes.io/component: zuul-executor
+spec:
+  serviceName: zuul-executor
+  replicas: {{ zuul_executor.replicas }}
+  podManagementPolicy: Parallel
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: zuul
+      app.kubernetes.io/instance: {{ instance_name }}
+      app.kubernetes.io/part-of: zuul
+      app.kubernetes.io/component: zuul-executor
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: zuul
+        app.kubernetes.io/instance: {{ instance_name }}
+        app.kubernetes.io/part-of: zuul
+        app.kubernetes.io/component: zuul-executor
+      annotations:
+        zuulConfSha: "{{ zuul_conf_sha }}"
+    spec:
+      securityContext:
+        runAsUser: 10001
+        runAsGroup: 10001
+      containers:
+      - name: executor
+        image: zuul/zuul-executor:{{ zuul_version }}
+        command: ["/usr/local/bin/zuul-executor", "-f", "-d"]
+        ports:
+        - name: logs
+          containerPort: 7900
+        volumeMounts:
+        - name: zuul-config
+          mountPath: /etc/zuul
+        - name: zuul-var
+          mountPath: /var/lib/zuul
+        {%- if executor_ssh_secret %}
+        - name: nodepool-private-key
+          mountPath: /etc/zuul/sshkey
+        {%- endif %}
+        - name: zookeeper-client-tls
+          mountPath: /tls/client
+          readOnly: true
+        {%- for volume in spec.get('jobVolumes', []) %}
+        - name: {{ volume.volume.name }}
+          mountPath: {{ volume.path }}
+          {%- if volume.access == 'ro' %}readOnly: true{% endif %}
+        {%- endfor %}
+        securityContext:
+          privileged: true
+        terminationGracePeriodSeconds: 3600
+        lifecycle:
+          preStop:
+            exec:
+              command: [
+                "/usr/local/bin/zuul-executor", "graceful"
+              ]
+      volumes:
+      - name: zuul-var
+        emptyDir: {}
+      - name: zuul-config
+        secret:
+          secretName: zuul-config
+      - name: zookeeper-client-tls
+        secret:
+          secretName: zookeeper-client-tls
+      {%- if executor_ssh_secret %}
+      - name: nodepool-private-key
+        secret:
+          secretName: {{ executor_ssh_secret }}
+      {%- endif %}          
+      {%- for volume in spec.get('jobVolumes', []) %}
+      - {{ volume.volume | zuul_to_json }}
+      {%- endfor %}
+---
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: zuul-ingress
+  labels:
+    app.kubernetes.io/name: zuul
+    app.kubernetes.io/instance: {{ instance_name }}
+    app.kubernetes.io/part-of: zuul
+    app.kubernetes.io/component: zuul-web
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /
+        backend:
+          serviceName: zuul-web
+          servicePort: 9000

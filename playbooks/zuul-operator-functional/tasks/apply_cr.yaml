@@ -1,6 +1,5 @@
 ---
 - name: Apply Zuul CR
-  when: use_local_role is not defined
   k8s:
     namespace: "{{ namespace }}"
     definition:
@@ -9,8 +8,3 @@
       metadata:
         name: zuul
       spec: "{{ spec }}"
-
-- name: Run Zuul CR directly
-  when: use_local_role is defined
-  include_role:
-    name: zuul

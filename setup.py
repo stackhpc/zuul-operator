@@ -1,4 +1,5 @@
-# Copyright (c) 2020 Red Hat, Inc.
+#!/usr/bin/env python
+# Copyright 2021 Acme Gating, LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,14 +14,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM docker.io/opendevorg/python-builder:3.8 as builder
+import setuptools
 
-COPY . /tmp/src
-RUN assemble
-
-FROM docker.io/opendevorg/python-base:3.8
-
-COPY --from=builder /output/ /output
-RUN /output/install-from-bindep
-
-ENTRYPOINT ["/usr/local/bin/zuul-operator"]
+setuptools.setup(
+    setup_requires=['pbr'],
+    pbr=True
+)

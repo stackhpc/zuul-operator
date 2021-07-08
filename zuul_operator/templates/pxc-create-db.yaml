@@ -1,0 +1,22 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: create-database
+spec:
+  template:
+    spec:
+      containers:
+      - name: mysql
+        image: percona:8.0
+        command:
+          - "mysql"
+          - "-h"
+          - "db-cluster-haproxy"
+          - "-uroot"
+          - "-p{{ root_password }}"
+          - "mysql"
+          - "-e"
+          - "create database if not exists zuul; create user if not exists 'zuul'@'%'; alter user 'zuul'@'%' identified by '{{ zuul_password }}'; grant all on zuul.* TO 'zuul'@'%'; flush privileges;"
+      restartPolicy: Never
+  backoffLimit: 4
+    

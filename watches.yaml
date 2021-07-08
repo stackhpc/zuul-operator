@@ -1,5 +1,0 @@
----
-- version: v1alpha1
-  group: operator.zuul-ci.org
-  kind: Zuul
-  role: zuul

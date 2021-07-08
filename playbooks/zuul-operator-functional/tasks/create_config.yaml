@@ -18,10 +18,6 @@
             trigger:
               timer:
                 - time: '* * * * * *'
-            success:
-              sql:
-            failure:
-              sql:
 
         - nodeset:
             name: pod-fedora

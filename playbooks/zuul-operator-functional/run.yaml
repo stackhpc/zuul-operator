@@ -1,20 +1,6 @@
 - name: install and start zuul operator
   hosts: all
   tasks:
-    - name: Render default crd
-      when:
-        - not use_local_role | default(false) | bool
-      shell: |
-        set -e
-        JSON_TO_DHALL="{{ container_runtime }} run -v $(pwd)/conf:/conf:Z --rm --entrypoint json-to-dhall -i docker.io/zuul/zuul-operator"
-        DHALL_TO_YAML="{{ container_runtime }} run -v $(pwd)/conf:/conf:Z --rm --entrypoint dhall-to-yaml -i docker.io/zuul/zuul-operator"
-        JSON=$(python3 -c 'import yaml, json; print(json.dumps(yaml.safe_load(open("playbooks/files/cr_spec.yaml"))))')
-        INPUT=$(echo $JSON | $JSON_TO_DHALL '(/conf/zuul/input.dhall).Input.Type')
-        echo '(/conf/zuul/resources.dhall ('$INPUT')).List' | $DHALL_TO_YAML > ~/zuul-output/logs/cr_spec-resources.yaml
-      args:
-        executable: /bin/bash
-        chdir: "{{ zuul.projects['opendev.org/zuul/zuul-operator'].src_dir }}"
-
     - name: Setup CRD
       command: make install
       args:
@@ -32,7 +18,7 @@
         spec:
           executor:
             count: 1
-            ssh_key:
+            sshkey:
               secretName: executor-ssh-key
           merger:
             count: 1
@@ -43,28 +29,26 @@
             config:
               secretName: nodepool-yaml-conf
           connections:
-            gits:
-              - baseurl: https://opendev.org
-                name: opendev.org
+            opendev.org:
+              driver: git
+              baseurl: https://opendev.org
           externalConfig:
             kubernetes:
               secretName: nodepool-kube-config
-              key: kube.config
           registry:
             count: 1
           preview:
             count: 1
-          withCertManager: "{{ withCertManager }}"
 
     - name: Wait for services
       include_tasks: ./tasks/wait_services.yaml
 
     - name: Test the cert-manager
       include_tasks: ./tasks/test_cert_manager.yaml
-      when: withCertManager
 
-    - name: Test the preview
-      include_tasks: ./tasks/test_preview.yaml
+    # TODO: implement
+    # - name: Test the preview
+    #   include_tasks: ./tasks/test_preview.yaml
 
-    - name: Test the registry
-      include_tasks: ./tasks/test_registry.yaml
+    # - name: Test the registry
+    #   include_tasks: ./tasks/test_registry.yaml
