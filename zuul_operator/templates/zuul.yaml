@@ -345,6 +345,13 @@ spec:
           mountPath: {{ volume.path }}
           {%- if volume.access == 'ro' %}readOnly: true{% endif %}
         {%- endfor %}
+        {%- for connection_name, connection in connections.items() %}
+        {%- if 'secretName' in connection %}
+        - name: connection-{{ connection_name }}
+          mountPath: /etc/zuul/connections/{{ connection_name }}
+          readOnly: true
+        {%- endif %}
+        {%- endfor %}
         securityContext:
           privileged: true
         terminationGracePeriodSeconds: {{ spec.executor.terminationGracePeriodSeconds }}
@@ -370,6 +377,13 @@ spec:
       {%- endif %}
       {%- for volume in spec.get('jobVolumes', []) %}
       - {{ volume.volume | zuul_to_json }}
+      {%- endfor %}
+      {%- for connection_name, connection in connections.items() %}
+      {%- if 'secretName' in connection %}
+      - name: connection-{{ connection_name }}
+        secret:
+          secretName: {{ connection['secretName'] }}
+      {%- endif %}
       {%- endfor %}
 ---
 apiVersion: apps/v1
@@ -415,6 +429,13 @@ spec:
         - name: zookeeper-client-tls
           mountPath: /tls/client
           readOnly: true
+        {%- for connection_name, connection in connections.items() %}
+        {%- if 'secretName' in connection %}
+        - name: connection-{{ connection_name }}
+          mountPath: /etc/zuul/connections/{{ connection_name }}
+          readOnly: true
+        {%- endif %}
+        {%- endfor %}
         terminationGracePeriodSeconds: 3600
       volumes:
       - name: zuul-var
@@ -425,6 +446,13 @@ spec:
       - name: zookeeper-client-tls
         secret:
           secretName: {{ spec.zookeeper.secretName }}
+      {%- for connection_name, connection in connections.items() %}
+      {%- if 'secretName' in connection %}
+      - name: connection-{{ connection_name }}
+        secret:
+          secretName: {{ connection['secretName'] }}
+      {%- endif %}
+      {%- endfor %}
 ---
 apiVersion: v1
 kind: Service
