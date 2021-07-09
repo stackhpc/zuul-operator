@@ -143,7 +143,7 @@ spec:
       containers:
       - name: scheduler
         image: {{ spec.imagePrefix }}/zuul-scheduler:{{ spec.zuulImageVersion }}
-        command: ["/usr/local/bin/zuul-scheduler", "-f", "-d"]
+        args: ["/usr/local/bin/zuul-scheduler", "-f", "-d"]
         ports:
         - name: gearman
           containerPort: 4730
@@ -324,7 +324,7 @@ spec:
       containers:
       - name: executor
         image: {{ spec.imagePrefix }}/zuul-executor:{{ spec.zuulImageVersion }}
-        command: ["/usr/local/bin/zuul-executor", "-f", "-d"]
+        args: ["/usr/local/bin/zuul-executor", "-f", "-d"]
         ports:
         - name: logs
           containerPort: 7900
