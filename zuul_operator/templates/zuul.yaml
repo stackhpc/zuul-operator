@@ -421,6 +421,7 @@ spec:
       containers:
       - name: merger
         image: {{ spec.imagePrefix }}/zuul-merger:{{ spec.zuulImageVersion }}
+        args: ["/usr/local/bin/zuul-merger", "-f", "-d"]
         volumeMounts:
         - name: zuul-config
           mountPath: /etc/zuul
