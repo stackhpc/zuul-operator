@@ -332,6 +332,9 @@ spec:
         ports:
         - name: logs
           containerPort: 7900
+        env:
+          - name: ZUUL_EXECUTOR_SIGTERM_GRACEFUL
+            value: "1"
         volumeMounts:
         - name: zuul-config
           mountPath: /etc/zuul
@@ -359,12 +362,6 @@ spec:
         securityContext:
           privileged: true
         terminationGracePeriodSeconds: {{ spec.executor.terminationGracePeriodSeconds }}
-        lifecycle:
-          preStop:
-            exec:
-              command: [
-                "/usr/local/bin/zuul-executor", "graceful"
-              ]
       volumes:
       - name: zuul-var
         emptyDir: {}
