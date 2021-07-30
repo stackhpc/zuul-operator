@@ -1,9 +1,10 @@
 - name: Get preview service ip
-  command: kubectl get svc preview -o "jsonpath={.spec.clusterIP}"
-  register: _preview_ip
+  command: kubectl get svc zuul-preview -o jsonpath='{.spec.ports[0].nodePort}'
+  register: _preview_port
 
 - name: Connect to the preview service
   uri:
-    url: "http://{{ _preview_ip.stdout_lines[0] }}"
+    url: "http://{{ cluster_ip}}:{{ _preview_port.stdout_lines[0] }}"
     method: POST
     status_code: 403
+    timeout: 60

@@ -71,9 +71,11 @@ class Zuul:
         self.spec.setdefault('merger', {}).setdefault('count', 0)
         self.spec.setdefault('web', {}).setdefault('count', 1)
         self.spec.setdefault('fingergw', {}).setdefault('count', 1)
+        self.spec.setdefault('preview', {}).setdefault('count', 0)
 
         self.spec.setdefault('imagePrefix', 'docker.io/zuul')
         self.spec.setdefault('zuulImageVersion', 'latest')
+        self.spec.setdefault('zuulPreviewImageVersion', 'latest')
         self.spec.setdefault('nodepoolImageVersion', 'latest')
 
         self.cert_manager = certmanager.CertManager(
