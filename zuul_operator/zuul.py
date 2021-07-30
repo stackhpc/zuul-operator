@@ -124,8 +124,8 @@ class Zuul:
         if not self.manage_db:
             self.log.info("DB is externally managed")
             return
-        # TODO: get this from spec
-        small = True
+
+        small = self.spec.get('database', {}).get('allowUnsafeConfig', False)
 
         self.log.info("DB is internally managed")
         self.pxc = pxc.PXC(self.api, self.namespace, self.log)
