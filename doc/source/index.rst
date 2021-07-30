@@ -355,6 +355,13 @@ verbatim):
             * ``tls.crt``
             * ``tls.key``
 
+      .. attr:: env
+
+         A list of environment variables.  This will be passed through
+         to the Pod specifications for the scheduler, launcher, and
+         web.  This may be used to set http_proxy environment
+         variables.
+
       .. attr:: scheduler
 
          .. attr:: config
