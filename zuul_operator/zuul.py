@@ -69,6 +69,8 @@ class Zuul:
             '/etc/zuul/tenant/main.yaml'
 
         self.spec.setdefault('executor', {}).setdefault('count', 1)
+        self.spec.setdefault('executor', {}).setdefault(
+            'terminationGracePeriodSeconds', 21600)
         self.spec.setdefault('merger', {}).setdefault('count', 0)
         self.spec.setdefault('web', {}).setdefault('count', 1)
         self.spec.setdefault('fingergw', {}).setdefault('count', 1)
