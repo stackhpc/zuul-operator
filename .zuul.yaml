@@ -92,12 +92,14 @@
 - project:
     check:
       jobs:
+        - tox-linters
         - zuul-tox-docs
         - zuul-operator-build-image
         - zuul-operator-functional-k8s:
             dependencies: zuul-operator-build-image
     gate:
       jobs:
+        - tox-linters
         - zuul-tox-docs
         - zuul-operator-upload-image
         - zuul-operator-functional-k8s:

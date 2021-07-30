@@ -45,7 +45,7 @@ class Zuul:
             self.db_secret = 'zuul-db'
             self.manage_db = True
 
-        self.nodepool_secret = spec.get('launcher', {}).get('config',{}).\
+        self.nodepool_secret = spec.get('launcher', {}).get('config', {}).\
             get('secretName')
 
         zk_spec = self.spec.setdefault('zookeeper', {})
@@ -267,7 +267,8 @@ class Zuul:
 
         # Shard the config so we can create a deployment + secret for
         # each provider.
-        nodepool_yaml = yaml.safe_load(base64.b64decode(obj.obj['data']['nodepool.yaml']))
+        nodepool_yaml = yaml.safe_load(base64.b64decode(
+            obj.obj['data']['nodepool.yaml']))
 
         nodepool_yaml['zookeeper-servers'] = self.parse_zk_string(
             self.spec['zookeeper']['hosts'])
@@ -321,7 +322,8 @@ class Zuul:
         for unused_provider in old_providers - new_providers:
             self.log.info("Deleting unused provider %s", unused_provider)
 
-            deployment_name = f"nodepool-launcher-{self.name}-{unused_provider}"
+            deployment_name = "nodepool-launcher-"\
+                f"{self.name}-{unused_provider}"
             secret_name = f"nodepool-config-{self.name}-{unused_provider}"
 
             try:
@@ -339,7 +341,8 @@ class Zuul:
                 pass
 
     def write_registry_conf(self):
-        config_secret = self.spec['registry'].get('config', {}).get('secretName')
+        config_secret = self.spec['registry'].get('config', {}).\
+            get('secretName')
         if not config_secret:
             raise kopf.PermanentError("No registry config secret found")
 
@@ -435,7 +438,8 @@ class Zuul:
                 str(timeout),
                 '/bin/sh',
                 '-c',
-                f'while !( echo -n "{expected}" | sha256sum -c - ); do sleep {delay}; done'
+                f'while !( echo -n "{expected}" | sha256sum -c - );'
+                f'do sleep {delay}; done'
             ]
             resp = utils.pod_exec(self.namespace, obj.name, command)
             self.log.debug("Response: %s", resp)

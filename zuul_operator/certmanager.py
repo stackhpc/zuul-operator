@@ -13,7 +13,6 @@
 # under the License.
 
 import time
-import base64
 
 import pykube
 
@@ -31,7 +30,7 @@ class CertManager:
         kind = objects.get_object('apiextensions.k8s.io/v1beta1',
                                   'CustomResourceDefinition')
         try:
-            obj = kind.objects(self.api).\
+            kind.objects(self.api).\
                 get(name="certificaterequests.cert-manager.io")
         except pykube.exceptions.ObjectDoesNotExist:
             return False
@@ -57,5 +56,5 @@ class CertManager:
                 self.log.info("Cert-manager is running")
                 return
             else:
-                self.log.info(f"Waiting for Cert-manager")
+                self.log.info("Waiting for Cert-manager")
                 time.sleep(10)
