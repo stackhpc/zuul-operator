@@ -1,15 +1,27 @@
 - name: install and start zuul operator
   hosts: all
+  vars:
+    # Override this if you are running the operator interactively
+    # locally for development.
+    install_operator: true
+    zuul_work_dir: "{{ zuul.projects['opendev.org/zuul/zuul-operator'].src_dir }}"
   tasks:
     - name: Setup CRD
-      command: make install
+      command: kubectl apply -f deploy/crds/zuul-ci_v1alpha2_zuul_crd.yaml -f deploy/rbac.yaml
       args:
-        chdir: "{{ zuul.projects['opendev.org/zuul/zuul-operator'].src_dir }}"
+        chdir: "{{ zuul_work_dir }}"
+
+    - name: Install operator
+      when: install_operator
+      command: kubectl apply -f deploy/operator.yaml
+      args:
+        chdir: "{{ zuul_work_dir }}"
 
     - name: Create required secret
       include_tasks: ./tasks/create_test_secrets.yaml
 
     - name: Wait for operator deployment
+      when: install_operator
       command: timeout 8m kubectl rollout status deployment/zuul-operator
 
     - name: Deploy CR
