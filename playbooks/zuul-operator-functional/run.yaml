@@ -37,6 +37,8 @@
               secretName: nodepool-kube-config
           registry:
             count: 1
+            config:
+              secretName: zuul-registry-conf
           preview:
             count: 1
 
@@ -45,7 +47,3 @@
 
     - name: Test the cert-manager
       include_tasks: ./tasks/test_cert_manager.yaml
-
-    # TODO: implement
-    # - name: Test the registry
-    #   include_tasks: ./tasks/test_registry.yaml

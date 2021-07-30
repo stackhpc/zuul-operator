@@ -192,6 +192,33 @@ static HTML/Javascript sites).  If you enable this, the operator will
 configure a ``zuul-preview`` service to which you may route an Ingress
 or LoadBalancer.
 
+Zuul Registry
+-------------
+
+The operator has optional support for deploying a zuul-registry
+service.  This is an experimental add-on for Zuul to act as an
+intermediate registry for the container image jobs in `zuul-jobs`.
+
+If you enable this, the operator will, by default, configure a
+``zuul-registry`` service in a manner appropriate for access from
+within the cluster only.  If you need to access the registry from
+outside the cluster, you will need to additionally add an Ingress or
+LoadBalancer, as well as provide TLS certs with the appropriate
+hostname.  Currently, zuul-registry performs its own TLS termination.
+
+If you usue this, you will also need to provide a ``registry.yaml``
+config file in a secret.  You only need to provide the ``users`` and,
+if you are accessing the registry outside the cluster, the
+``public-url`` setting (omit it if you are accessing it from within
+the cluster only).
+
+.. code-block:: yaml
+
+   registry:
+     users:
+       - name: testuser
+         pass: testpass
+         access: write
 
 Specification Reference
 -----------------------
@@ -481,3 +508,36 @@ verbatim):
             :default: 0
 
             How many Zuul Preview servers to manage.
+
+      .. attr:: registry
+
+         .. attr:: count
+            :default: 0
+
+            How many Zuul Registry servers to manage.
+
+         .. attr:: volumeSize
+            :default: 80Gi
+
+            The requested size of the registry storage volume.
+
+         .. attr:: tls
+
+            .. attr:: secretName
+
+               The name of a secret containing a TLS client certificate
+               and key for Zuul Registry.  This should be (or the format
+               should match) a standard Kubernetes TLS secret.
+
+               If you omit this, the operator will create a secret for
+               you.
+
+         .. attr:: config
+
+            .. attr:: secretName
+
+               The name of a secret containing a registry
+               configuration file.  The key in the secret should be
+               ``registry.yaml``.  Only provide the ``users`` and, if
+               exposing the registry outside the cluster, the
+               ``public-url`` entries.
