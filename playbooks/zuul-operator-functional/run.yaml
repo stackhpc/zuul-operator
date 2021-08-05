@@ -5,6 +5,7 @@
     # locally for development.
     install_operator: true
     zuul_work_dir: "{{ zuul.projects['opendev.org/zuul/zuul-operator'].src_dir }}"
+    runtime: minikube
   tasks:
     - name: Setup CRD
       command: kubectl apply -f deploy/crds/zuul-ci_v1alpha2_zuul_crd.yaml -f deploy/rbac.yaml
@@ -16,6 +17,9 @@
       command: kubectl apply -f deploy/operator.yaml
       args:
         chdir: "{{ zuul_work_dir }}"
+
+    - name: Create static node
+      include_tasks: ./tasks/create_static_node.yaml
 
     - name: Create required secret
       include_tasks: ./tasks/create_test_secrets.yaml

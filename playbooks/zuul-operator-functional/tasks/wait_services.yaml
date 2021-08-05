@@ -19,8 +19,15 @@
 - name: Wait for executor deployment
   command: timeout 10m kubectl rollout status statefulset/zuul-executor
 
-- name: Wait 8 minutes for launcher to settle
+- name: Wait 8 minutes for kube launcher to settle
   command: kubectl logs deployment/nodepool-launcher-kube-cluster
+  register: _launcher_log
+  until: "'Starting PoolWorker' in _launcher_log.stdout"
+  delay: 10
+  retries: 48
+
+- name: Wait 8 minutes for static launcher to settle
+  command: kubectl logs deployment/nodepool-launcher-static-vms
   register: _launcher_log
   until: "'Starting PoolWorker' in _launcher_log.stdout"
   delay: 10

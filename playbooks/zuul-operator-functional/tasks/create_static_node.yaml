@@ -1,0 +1,74 @@
+- name: Create static node image
+  when: "runtime == 'minikube'"
+  args:
+    chdir: "{{ zuul_work_dir }}/playbooks/zuul-operator-functional/static-node"
+  shell: |
+    /tmp/minikube image build . -t static-node
+
+- name: Create static node image
+  when: "runtime == 'kind'"
+  args:
+    chdir: "{{ zuul_work_dir }}/playbooks/zuul-operator-functional/static-node"
+  shell: |
+    docker build . -t static-node
+    kind load docker-image static-node
+
+- name: Run static node
+  k8s:
+    namespace: "default"
+    definition:
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: node
+        labels:
+          app: static-node
+      spec:
+        containers:
+          - name: node
+            image: static-node
+            imagePullPolicy: Never
+            lifecycle:
+              postStart:
+                exec:
+                  command:
+                    - bash
+                    - -c
+                    - mkdir -p /root/.ssh && chmod 0600 /root/.ssh && cp /sshkeys/authorized_keys /root/.ssh
+            ports:
+              - name: ssh
+                containerPort: 22
+                protocol: TCP
+              - name: zuul
+                containerPort: 19885
+                protocol: TCP
+            volumeMounts:
+              - name: authorized-keys
+                mountPath: /sshkeys
+                readOnly: true
+        volumes:
+          - name: authorized-keys
+            secret:
+              secretName: static-node-authorized-keys
+              defaultMode: 0600
+
+- name: Create static node service
+  k8s:
+    namespace: "default"
+    definition:
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: node
+      spec:
+        selector:
+          app: static-node
+        ports:
+          - name: ssh
+            port: 22
+            targetPort: 22
+            protocol: TCP
+          - name: zuul
+            port: 19885
+            targetPort: 19885
+            protocol: TCP
