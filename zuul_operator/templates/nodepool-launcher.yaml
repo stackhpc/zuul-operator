@@ -38,16 +38,11 @@ spec:
         - name: zookeeper-client-tls
           mountPath: /tls/client
           readOnly: true
-      {%- if 'openstack' in external_config %}
-        - name: openstack
-          mountPath: /etc/openstack
+        {%- for name, c in external_config.items() %}
+        - name: {{ name }}
+          mountPath: /etc/{{ name }}
           readOnly: true
-      {%- endif %}
-      {%- if 'kubernetes' in external_config %}
-        - name: kubernetes
-          mountPath: /etc/kubernetes
-          readOnly: true
-      {%- endif %}
+        {%- endfor %}
       volumes:
       - name: nodepool-config
         secret:
@@ -55,13 +50,8 @@ spec:
       - name: zookeeper-client-tls
         secret:
           secretName: zookeeper-client-tls
-      {%- if 'openstack' in external_config %}
-      - name: openstack
+      {%- for name, c in external_config.items() %}
+      - name: {{ name }}
         secret:
-          secretName: {{ external_config['openstack']['secretName'] }}
-      {%- endif %}
-      {%- if 'kubernetes' in external_config %}
-      - name: kubernetes
-        secret:
-          secretName: {{ external_config['kubernetes']['secretName'] }}
-      {%- endif %}
+          secretName: {{ c['secretName'] }}
+      {%- endfor %}
