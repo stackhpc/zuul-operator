@@ -12,7 +12,7 @@
 - name: Wait 8 minutes for scheduler to settle
   command: kubectl logs pod/zuul-scheduler-0
   register: _scheduler_log
-  until: "'Reconfiguration complete' in _scheduler_log.stdout"
+  until: "'Config priming complete' in _scheduler_log.stdout"
   delay: 10
   retries: 48
 
