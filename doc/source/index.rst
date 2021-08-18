@@ -485,6 +485,53 @@ verbatim):
                the contents as the value of the ``sshkey`` attribute
                in the secret.
 
+      .. attr:: externalConfig
+
+         A mapping of secrets for specific Nodepool drivers.  Some
+         Nodepool drivers use external files for configuration (e.g.,
+         `clouds.yaml` for OpenStack).  To provide these to Nodepool,
+         add them to a secret and specify the name of that secret in
+         an entry in externalConfig.
+
+         For example, a secret for OpenStack might look like:
+
+         .. code-block:: yaml
+
+            apiVersion: v1
+            kind: Secret
+            metadata:
+              name: openstack-secret
+            stringData:
+              clouds.yaml: "..."
+
+         To use that with Nodepool, add the following to the Operator
+         resource definition:
+
+         .. code-block:: yaml
+
+            externalConfig:
+              openstack:
+                secretName: openstack-secret
+
+         This will cause a `clouds.yaml` file to be created at
+         `/etc/openstack/clouds.yaml`.
+
+         Some Nodepool drivers may need environment variables set in
+         order to use these secrets.  See :attr:`Zuul.spec.env` to add
+         those.
+
+         The keys in this mapping will become directories under
+         `/etc/`, and the secrets referenced will be mounted in those
+         directories.
+
+         .. attr:: <name>
+
+            The directory to mount under `/etc`.
+
+            .. attr:: SecretName
+
+               The name of a secret that should be mounted at `/etc/<name>`.
+
       .. attr:: jobVolumes
 
          A list of Kubernetes volumes to be bind mounted into the
