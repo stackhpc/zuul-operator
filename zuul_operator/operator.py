@@ -26,17 +26,17 @@ ConfigResource = collections.namedtuple('ConfigResource', [
     'attr', 'namespace', 'zuul_name', 'resource_name'])
 
 
-@kopf.on.startup()
-def startup(memo, **kwargs):
+def memoize_secrets(memo, logger):
     # (zuul_namespace, zuul) -> list of resources
-    memo.config_resources = {}
+    memo.config_resources.clear()
+    new_resources = {}
     # lookup all zuuls and update configmaps
 
     api = pykube.HTTPClient(pykube.KubeConfig.from_env())
     for namespace in objects.Namespace.objects(api):
         for zuul in objects.ZuulObject.objects(api).filter(
                 namespace=namespace.name):
-            resources = memo.config_resources.\
+            resources = new_resources.\
                 setdefault((namespace.name, zuul.name), [])
             # Zuul tenant config
             secret = zuul.obj['spec']['scheduler']['config']['secretName']
@@ -49,6 +49,22 @@ def startup(memo, **kwargs):
             res = ConfigResource('spec.launcher.config.secretName',
                                  namespace.name, zuul.name, secret)
             resources.append(res)
+    # Mutate the global instance
+    memo.config_resources.clear()
+    memo.config_resources.update(new_resources)
+
+
+@kopf.on.startup()
+def startup(memo, logger, **kwargs):
+    # Operator handlers (like this one) get a single global memo
+    # object; resource handlers (like update) get a memo object for
+    # that specific resource with items shallow-copied from the global
+    # memo.
+    #
+    # Initialize a dictionary here that we will mutate (but never
+    # overwrite) in all the handlers.
+    memo.config_resources = {}
+    memoize_secrets(memo, logger)
 
 
 @kopf.on.update('secrets')
@@ -74,7 +90,7 @@ def update_secret(name, namespace, logger, memo, new, **kwargs):
 
 
 @kopf.on.create('zuuls', backoff=10)
-def create_fn(spec, name, namespace, logger, **kwargs):
+def create_fn(spec, name, namespace, logger, memo, **kwargs):
     logger.info(f"Create zuul {namespace}/{name}")
 
     zuul = Zuul(namespace, name, logger, spec)
@@ -95,12 +111,13 @@ def create_fn(spec, name, namespace, logger, **kwargs):
     zuul.write_zuul_conf()
     zuul.create_zuul()
 
+    memoize_secrets(memo, logger)
     # We can set a status with something like:
     # return {'message': 'hello world'}
 
 
 @kopf.on.update('zuuls', backoff=10)
-def update_fn(name, namespace, logger, old, new, **kwargs):
+def update_fn(name, namespace, logger, old, new, memo, **kwargs):
     logger.info(f"Update zuul {namespace}/{name}")
 
     old = old['spec']
@@ -144,6 +161,8 @@ def update_fn(name, namespace, logger, old, new, **kwargs):
 
     if spec_changed:
         zuul.create_zuul()
+
+    memoize_secrets(memo, logger)
 
 
 class ZuulOperator:
