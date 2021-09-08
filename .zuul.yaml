@@ -11,6 +11,7 @@
       # see: https://github.com/eclipse/che/issues/8134
       docker_userland_proxy: false
       container_runtime: docker
+      minikube_version: v1.22.0  # NOTE(corvus): 1.23.0 failed with no matches for kind "CustomResourceDefinition" in version "apiextensions.k8s.io/v1beta1"
 
 - job:
     description: Operator integration tests with Kubernetes

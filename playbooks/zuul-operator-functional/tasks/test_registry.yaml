@@ -11,7 +11,7 @@
             containers:
             - name: test-registry
               image: quay.io/containers/podman:latest
-              command: ['podman', 'login', '--tls-verify=false', 'https://zuul-registry/', '-u', 'testuser', '-p', 'testpass']
+              command: ['podman', '--log-level=debug', 'login', '--tls-verify=false', 'zuul-registry', '-u', 'testuser', '-p', 'testpass']
               securityContext:
                 privileged: true
             restartPolicy: Never
