@@ -74,7 +74,7 @@ spec:
       imagePullSecrets: {{ spec.imagePullSecrets }}
       containers:
       - name: registry
-        image: {{ spec.imagePrefix }}/zuul-registry:{{ spec.zuulImageVersion }}
+        image: {{ spec.imagePrefix }}/zuul-registry:{{ spec.zuulRegistryImageVersion }}
         env:
         - name: DEBUG
           value: '1'
