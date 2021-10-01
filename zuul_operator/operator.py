@@ -146,11 +146,11 @@ def update_fn(name, namespace, logger, old, new, memo, **kwargs):
     if new.get('connections') != old.get('connections'):
         logger.info("Connections changed")
         conf_changed = True
-    if new.get('imagePrefix') != old.get('imagePrefix'):
-        logger.info("Image prefix changed")
-        spec_changed = True
     for key in ['executor', 'merger', 'scheduler', 'registry',
-                'launcher', 'connections', 'externalConfig']:
+                'launcher', 'connections', 'externalConfig',
+                'imagePrefix', 'imagePullSecrets', 'zuulImageVersion',
+                'zuulPreviewImageVersion', 'zuulRegistryImageVersion',
+                'nodepoolImageVersion']:
         if new.get(key) != old.get(key):
             logger.info(f"{key} changed")
             spec_changed = True

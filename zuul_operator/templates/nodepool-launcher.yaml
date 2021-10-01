@@ -27,6 +27,7 @@ spec:
         app.kubernetes.io/component: nodepool-launcher
         operator.zuul-ci.org/nodepool-provider: {{ provider_name }}
     spec:
+      imagePullSecrets: {{ spec.imagePullSecrets }}
       containers:
       - name: launcher
         image: {{ spec.imagePrefix }}/nodepool-launcher:{{ spec.nodepoolImageVersion }}
