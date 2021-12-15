@@ -12,8 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import os
-import sys
+import sys, os, datetime
+import subprocess
+import re
+from zuul_operator import version
+
+# The minimum version to link to
+min_version = (0, 0, 0)
 
 sys.path.insert(0, os.path.abspath('../..'))
 # -- General configuration ----------------------------------------------------
@@ -23,6 +28,8 @@ sys.path.insert(0, os.path.abspath('../..'))
 extensions = [
     'sphinx.ext.autodoc',
     'zuul_sphinx',
+    'reno.sphinxext',
+    'sphinx_rtd_theme',
 ]
 
 # autodoc generation is a bit aggressive and a nuisance when doing heavy
@@ -38,8 +45,10 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'zuul-operator'
-copyright = u'2021, Zuul contributors'
+project = u'Zuul-Operator'
+copyright = u'2012-%s, Zuul project contributors' % datetime.date.today().year
+
+doc_root = os.environ.get('ZUUL_DOC_ROOT', '/docs/%s' % (project.lower()))
 
 # If true, '()' will be appended to :func: etc. cross-reference text.
 add_function_parentheses = True
@@ -55,9 +64,65 @@ pygments_style = 'sphinx'
 
 # The theme to use for HTML and HTML Help pages.  Major themes that come with
 # Sphinx are currently 'default' and 'sphinxdoc'.
-# html_theme_path = ["."]
-# html_theme = '_theme'
-# html_static_path = ['static']
+html_theme = "sphinx_rtd_theme"
+
+if version.is_release:
+    version = version.release_string
+    current_version = version.release_string
+    versions = [('latest', f'{doc_root}/')]
+else:
+    # Uncomment this if we want to use the in-development version
+    # number (eg 4.10.5.dev4 887cf31e4 )
+    # version = version.get_version_string()
+    version = 'latest'
+    current_version = 'latest'
+    versions = [('latest', f'{doc_root}/')]
+
+try:
+    output = subprocess.check_output(['git', 'tag']).decode('utf8')
+except subprocess.CalledProcessError:
+    output = ''
+
+interesting_tags = []
+for tag in output.splitlines():
+    if re.match('^\d+\.\d+\.\d+$', tag):
+        parts = tuple(map(int, tag.split('.')))
+        if parts < min_version:
+            continue
+        interesting_tags.append((parts, tag))
+for parts, tag in reversed(sorted(interesting_tags, key=lambda x: x[0])):
+    versions.append((tag, f'{doc_root}/{tag}/'))
+
+# Theme options are theme-specific and customize the look and feel of a theme
+# further.  For a list of options available for each theme, see the
+# documentation.
+html_theme_options = {
+    'collapse_navigation': False,
+    'navigation_depth': -1,
+    'logo_only': True,
+}
+
+html_context = {
+    # This controls what is displayed at the top of the navbar.
+    'version': version,
+    # This controls what the caret selection displays at the bottom of
+    # the navbar.
+    'current_version': current_version,
+    # A tuple of (slug, url)
+    'versions': versions,
+}
+
+# Add any paths that contain custom static files (such as style sheets) here,
+# relative to this directory. They are copied after the builtin static files,
+# so a file named "default.css" will overwrite the builtin "default.css".
+html_static_path = ['_static']
+
+# Add any paths that contain templates here, relative to this directory.
+templates_path = ['_templates']
+
+# The name of an image file (relative to this directory) to place at the top
+# of the sidebar.
+html_logo = '_static/logo.svg'
 
 # Output file base name for HTML help builder.
 htmlhelp_basename = '%sdoc' % project
@@ -75,23 +140,10 @@ latex_documents = [
 # Example configuration for intersphinx: refer to the Python standard library.
 #intersphinx_mapping = {'http://docs.python.org/': None}
 
-# The name of an image file (relative to this directory) to place at the top
-# of the sidebar.
-#html_logo = '_static/logo.svg'
-html_theme_options = {
-    'show_related': True,
-    'logo': 'logo.svg',
-}
-
 # The name of an image file (within the static path) to use as favicon of the
 # docs.  This file should be a Windows icon file (.ico) being 16x16 or 32x32
 # pixels large.
 #html_favicon = None
 
-# Add any paths that contain custom static files (such as style sheets) here,
-# relative to this directory. They are copied after the builtin static files,
-# so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
-
-# Sample additional role paths
-zuul_role_paths = ['tests/roles']
+# Additional Zuul role paths
+zuul_role_paths = []
