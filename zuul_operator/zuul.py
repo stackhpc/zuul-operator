@@ -83,6 +83,7 @@ class Zuul:
         registry_tls.setdefault('secretName', 'zuul-registry-tls')
 
         self.spec.setdefault('imagePrefix', 'docker.io/zuul')
+        self.spec.setdefault('imagePullSecrets', [])
         self.spec.setdefault('zuulImageVersion', 'latest')
         self.spec.setdefault('zuulPreviewImageVersion', 'latest')
         self.spec.setdefault('zuulRegistryImageVersion', 'latest')

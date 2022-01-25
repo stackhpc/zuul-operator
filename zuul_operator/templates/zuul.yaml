@@ -140,6 +140,7 @@ spec:
       annotations:
         zuulConfSha: "{{ zuul_conf_sha }}"
     spec:
+      imagePullSecrets: {{ spec.imagePullSecrets }}
       containers:
       - name: scheduler
         image: {{ spec.imagePrefix }}/zuul-scheduler:{{ spec.zuulImageVersion }}
@@ -221,6 +222,7 @@ spec:
       annotations:
         zuulConfSha: "{{ zuul_conf_sha }}"
     spec:
+      imagePullSecrets: {{ spec.imagePullSecrets }}
       containers:
       - name: web
         image: {{ spec.imagePrefix }}/zuul-web:{{ spec.zuulImageVersion }}
@@ -269,6 +271,7 @@ spec:
       annotations:
         zuulConfSha: "{{ zuul_conf_sha }}"
     spec:
+      imagePullSecrets: {{ spec.imagePullSecrets }}
       containers:
       - name: fingergw
         image: {{ spec.imagePrefix }}/zuul-fingergw:{{ spec.zuulImageVersion }}
@@ -318,6 +321,7 @@ spec:
       annotations:
         zuulConfSha: "{{ zuul_conf_sha }}"
     spec:
+      imagePullSecrets: {{ spec.imagePullSecrets }}
       securityContext:
         runAsUser: 10001
         runAsGroup: 10001
@@ -415,6 +419,7 @@ spec:
       annotations:
         zuulConfSha: "{{ zuul_conf_sha }}"
     spec:
+      imagePullSecrets: {{ spec.imagePullSecrets }}
       securityContext:
         runAsUser: 10001
         runAsGroup: 10001
@@ -502,6 +507,7 @@ spec:
         app.kubernetes.io/part-of: zuul
         app.kubernetes.io/component: zuul-preview
     spec:
+      imagePullSecrets: {{ spec.imagePullSecrets }}
       containers:
       - name: preview
         image: {{ spec.imagePrefix }}/zuul-preview:{{ spec.zuulPreviewImageVersion }}

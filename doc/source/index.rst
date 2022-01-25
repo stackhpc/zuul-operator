@@ -232,6 +232,13 @@ verbatim):
    apiVersion: zuul-ci.org/v1alpha2
    kind: Zuul
    spec:
+     imagePrefix: docker.io/zuul
+     imagePullSecrets:
+       - name: my-docker-secret
+     zuulImageVersion: latest
+     zuulPreviewImageVersion: latest
+     zuulRegistryImageVersion: latest
+     nodepoolImageVersion: latest
      database:
        secretName: mariadbSecret
      zookeeper:
@@ -288,6 +295,17 @@ verbatim):
          (``zuul-executor``, etc).  However, changing the prefix will
          allow you to use custom images or private registries.
 
+      .. attr:: imagePullSecrets
+         :type: list
+         :default: []
+
+         If supplied, this value is passed through to Kubernetes.  It
+         should be a list of secrets.
+
+         .. attr:: name
+
+            The name of the image pull secret.
+
       .. attr:: zuulImageVersion
          :default: latest
 
@@ -297,6 +315,11 @@ verbatim):
          :default: latest
 
          The image tag to append to the Zuul Preview images.
+
+      .. attr:: zuulRegistryImageVersion
+         :default: latest
+
+         The image tag to append to the Zuul Registry images.
 
       .. attr:: nodepoolImageVersion
          :default: latest
