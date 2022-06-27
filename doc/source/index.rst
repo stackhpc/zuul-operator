@@ -613,7 +613,7 @@ verbatim):
             How many Zuul Registry servers to manage.
 
          .. attr:: volumeSize
-            :default: 80Gi
+            :default: 80G
 
             The requested size of the registry storage volume.
 

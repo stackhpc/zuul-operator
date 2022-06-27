@@ -28,7 +28,7 @@ class PXC:
         self.log = logger
 
     def is_installed(self):
-        kind = objects.get_object('apiextensions.k8s.io/v1beta1',
+        kind = objects.get_object('apiextensions.k8s.io/v1',
                                   'CustomResourceDefinition')
         try:
             kind.objects(self.api).\
@@ -44,9 +44,7 @@ class PXC:
         # deleted and the cluster orphaned.  Basically, we get to
         # choose whether to orphan the cluster or the operator, and
         # the operator seems like the better choice.
-        utils.apply_file(self.api, 'pxc-crd.yaml', _adopt=False)
-        utils.apply_file(self.api, 'pxc-operator.yaml',
-                         namespace=self.namespace, _adopt=False)
+        utils.apply_file(self.api, 'pxc-bundle.yaml', _adopt=False)
 
     def create_cluster(self, small):
         kw = {'namespace': self.namespace}
