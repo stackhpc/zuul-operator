@@ -3,4 +3,4 @@ kopf<1.31.0
 kubernetes
 jinja2
 pymysql
-pykube-ng
+pykube-ng<22.6.0
