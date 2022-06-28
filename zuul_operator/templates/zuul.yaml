@@ -49,28 +49,6 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: zuul-gearman
-  labels:
-    app.kubernetes.io/name: zuul
-    app.kubernetes.io/instance: {{ instance_name }}
-    app.kubernetes.io/part-of: zuul
-    app.kubernetes.io/component: zuul-scheduler
-spec:
-  type: ClusterIP
-  ports:
-  - name: gearman
-    port: 4730
-    protocol: TCP
-    targetPort: gearman
-  selector:
-    app.kubernetes.io/name: zuul
-    app.kubernetes.io/instance: {{ instance_name }}
-    app.kubernetes.io/part-of: zuul
-    app.kubernetes.io/component: zuul-scheduler
----
-apiVersion: v1
-kind: Service
-metadata:
   name: zuul-web
   labels:
     app.kubernetes.io/name: zuul
@@ -145,9 +123,6 @@ spec:
       - name: scheduler
         image: {{ spec.imagePrefix }}/zuul-scheduler:{{ spec.zuulImageVersion }}
         args: ["/usr/local/bin/zuul-scheduler", "-f", "-d"]
-        ports:
-        - name: gearman
-          containerPort: 4730
         volumeMounts:
         - name: zuul-config
           mountPath: /etc/zuul
