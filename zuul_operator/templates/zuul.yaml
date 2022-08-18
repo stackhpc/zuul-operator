@@ -169,6 +169,9 @@ spec:
       resources:
         requests:
           storage: 80Gi
+      {%- if spec.scheduler.storageClassName != "" %}
+      storageClassName: {{ spec.scheduler.storageClassName }}
+      {%- endif %}
 ---
 apiVersion: apps/v1
 kind: Deployment

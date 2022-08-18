@@ -58,6 +58,8 @@ spec:
                       type: string
                     secretName:
                       type: string
+                    storageClassName:
+                      type: string
                 env:
                   type: object
                   x-kubernetes-preserve-unknown-fields: true
@@ -73,6 +75,8 @@ spec:
                       type: integer
                       default: 1
                       minimum: 1
+                    storageClassName:
+                      type: string
                 launcher:
                   type: object
                   properties:
@@ -176,3 +180,5 @@ spec:
                       properties:
                         secretName:
                           type: string
+                    storageClassName:
+                      type: string

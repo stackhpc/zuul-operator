@@ -363,3 +363,6 @@ spec:
         resources:
           requests:
             storage: "5Gi"
+        {%- if spec.storageClassName != "" %}
+        storageClassName: {{ spec.zookeeper.storageClassName }}
+        {%- endif %}

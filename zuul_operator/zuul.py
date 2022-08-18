@@ -49,6 +49,7 @@ class Zuul:
             get('secretName')
 
         zk_spec = self.spec.setdefault('zookeeper', {})
+        zk_spec.setdefault('storageClassName', '')
         zk_str = spec.get('zookeeper', {}).get('hosts')
         if zk_str:
             self.manage_zk = False
@@ -67,7 +68,8 @@ class Zuul:
 
         self.spec.setdefault('scheduler', {})['tenant_config'] = \
             '/etc/zuul/tenant/main.yaml'
-
+        self.spec.setdefault('scheduler', {}).setdefault(
+            'storageClassName', '')
         self.spec.setdefault('executor', {}).setdefault('count', 1)
         self.spec.setdefault('executor', {}).setdefault(
             'terminationGracePeriodSeconds', 21600)
@@ -78,6 +80,8 @@ class Zuul:
         registry = self.spec.setdefault('registry', {})
         registry.setdefault('count', 0)
         registry.setdefault('volumeSize', '80Gi')
+        registry.setdefault('storageClassName', '')
+
         registry_tls = registry.setdefault('tls', {})
         self.manage_registry_cert = ('secretName' not in registry_tls)
         registry_tls.setdefault('secretName', 'zuul-registry-tls')
@@ -126,7 +130,8 @@ class Zuul:
         if not self.manage_zk:
             self.log.info("ZK is externally managed")
             return
-        self.zk = zookeeper.ZooKeeper(self.api, self.namespace, self.log)
+        self.zk = zookeeper.ZooKeeper(self.api, self.namespace, self.log,
+                                      self.spec['zookeeper'])
         self.zk.create()
 
     def wait_for_zk(self):

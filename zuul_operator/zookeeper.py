@@ -19,14 +19,15 @@ from . import utils
 
 
 class ZooKeeper:
-    def __init__(self, api, namespace, logger):
+    def __init__(self, api, namespace, logger, spec):
         self.api = api
         self.namespace = namespace
         self.log = logger
+        self.spec = spec
 
     def create(self):
         utils.apply_file(self.api, 'zookeeper.yaml',
-                         namespace=self.namespace)
+                         namespace=self.namespace, spec=self.spec)
 
     def wait_for_cluster(self):
         while True:

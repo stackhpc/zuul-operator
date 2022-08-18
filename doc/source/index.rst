@@ -378,6 +378,12 @@ verbatim):
             * ``tls.crt``
             * ``tls.key``
 
+         .. attr:: storageClassName
+            :default: ''
+
+            The name of the Kubernetes storage class to use when
+            running using the managed ZooKeeper instance.
+
       .. attr:: env
 
          A list of environment variables.  This will be passed through
@@ -395,6 +401,12 @@ verbatim):
                file.
 
                The key name in the secret should be ``main.yaml``.
+
+         .. attr:: storageClassName
+            :default: ''
+
+            The name of the Kubernetes storage class to use when
+            running using the managed ZooKeeper instance.
 
       .. attr:: launcher
 
@@ -616,6 +628,12 @@ verbatim):
             :default: 80G
 
             The requested size of the registry storage volume.
+
+         .. attr:: storageClassName
+            :default: ''
+
+            The name of the Kubernetes storage class to use when
+            running using the managed ZooKeeper instance.
 
          .. attr:: tls
 
