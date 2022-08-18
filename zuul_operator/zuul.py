@@ -213,7 +213,7 @@ class Zuul:
                     if k == 'sshkey':
                         v = f'/etc/zuul/connections/{connection_name}/sshkey'
                     else:
-                        v = base64.b64decode(v)
+                        v = base64.b64decode(v).decode('utf-8')
                     connection[k] = v
 
         kw = {'connections': connections,
