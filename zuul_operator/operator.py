@@ -67,8 +67,20 @@ def startup(memo, logger, **kwargs):
     memoize_secrets(memo, logger)
 
 
-@kopf.on.update('secrets')
-def update_secret(name, namespace, logger, memo, new, **kwargs):
+def when_update_secret(name, namespace, memo, logger, **_):
+    logger.info(f"Checking update predicate for {namespace}/{name}")
+
+    for resources in memo.config_resources.values():
+        for resource in resources:
+            if (resource.namespace == namespace or
+                resource.resource_name == name):
+                return True
+
+    return False
+
+
+@kopf.on.update('secrets', when=when_update_secret)
+def update_secret(name, namespace, logger, memo, **kwargs):
     # if this configmap isn't known, ignore
     logger.info(f"Update secret {namespace}/{name}")
 
