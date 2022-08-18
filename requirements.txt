@@ -1,5 +1,5 @@
 pbr
-kopf<1.31.0
+kopf>=1.35.0
 kubernetes
 jinja2
 pymysql

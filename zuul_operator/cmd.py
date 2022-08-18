@@ -14,7 +14,7 @@
 
 import argparse
 
-from kopf.engines import loggers
+import kopf
 
 from zuul_operator import ZuulOperator
 
@@ -38,10 +38,10 @@ class ZuulOperatorCommand:
         args = parser.parse_args()
 
         # Use kopf's loggers since they carry object data
-        loggers.configure(debug=False, verbose=args.debug,
-                          quiet=False,
-                          log_format=loggers.LogFormat['FULL'],
-                          log_refkey=None, log_prefix=None)
+        kopf.configure(debug=False, verbose=args.debug,
+                       quiet=False,
+                       log_format=kopf.LogFormat['FULL'],
+                       log_refkey=None, log_prefix=None)
 
         self.op.run()
 
