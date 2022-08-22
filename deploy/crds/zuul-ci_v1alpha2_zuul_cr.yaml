@@ -23,3 +23,7 @@ spec:
   externalConfig:
     kubernetes:
       secretName: nodepool-kube-config
+#
+# uncomment the following if the k8s cluster has less than 3 nodes:
+#  database:
+#    allowUnsafeConfig: true

@@ -19,13 +19,13 @@ from pykube.objects import *
 
 
 class Issuer(NamespacedAPIObject):
-    version = "cert-manager.io/v1alpha2"
+    version = "cert-manager.io/v1"
     endpoint = "issuers"
     kind = "Issuer"
 
 
 class Certificate(NamespacedAPIObject):
-    version = "cert-manager.io/v1alpha2"
+    version = "cert-manager.io/v1"
     endpoint = "certificates"
     kind = "Certificate"
 
@@ -42,8 +42,8 @@ class ValidatingWebhookConfiguration(APIObject):
     kind = 'ValidatingWebhookConfiguration'
 
 
-class CustomResourceDefinition_v1beta1(APIObject):
-    version = "apiextensions.k8s.io/v1beta1"
+class CustomResourceDefinition(APIObject):
+    version = "apiextensions.k8s.io/v1"
     endpoint = "customresourcedefinitions"
     kind = "CustomResourceDefinition"
 
@@ -54,6 +54,12 @@ class Role_v1beta1(NamespacedAPIObject):
     kind = "Role"
 
 
+class PodDisruptionBudget(NamespacedAPIObject):
+    version = "policy/v1"
+    endpoint = "poddisruptionbudgets"
+    kind = "PodDisruptionBudget"
+
+
 class ClusterRole_v1beta1(APIObject):
     version = "rbac.authorization.k8s.io/v1beta1"
     endpoint = "clusterroles"
@@ -61,7 +67,7 @@ class ClusterRole_v1beta1(APIObject):
 
 
 class PerconaXtraDBCluster(NamespacedAPIObject):
-    version = "pxc.percona.com/v1-7-0"
+    version = "pxc.percona.com/v1-11-0"
     endpoint = "perconaxtradbclusters"
     kind = "PerconaXtraDBCluster"
 

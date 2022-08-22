@@ -27,7 +27,7 @@ class CertManager:
         self.log = logger
 
     def is_installed(self):
-        kind = objects.get_object('apiextensions.k8s.io/v1beta1',
+        kind = objects.get_object('apiextensions.k8s.io/v1',
                                   'CustomResourceDefinition')
         try:
             kind.objects(self.api).\
