@@ -31,6 +31,8 @@
       - zuul-container-image
       - zuul-registry-container-image
       - nodepool-container-image
+      - python-builder-3.10-bullseye-container-image
+      - python-base-3.10-bullseye-container-image
     provides:
       - zuul-operator-container-image
     vars: &image_vars
@@ -75,6 +77,8 @@
       - nodepool-container-image
     provides:
       - zuul-operator-container-image
+      - python-builder-3.10-bullseye-container-image
+      - python-base-3.10-bullseye-container-image
     vars: *image_vars
 
 - job:
