@@ -98,20 +98,20 @@
     check:
       jobs:
         - tox-linters
-        - zuul-tox-docs
+        - zuul-nox-docs
         - zuul-operator-build-image
         - zuul-operator-functional-k8s:
             dependencies: zuul-operator-build-image
     gate:
       jobs:
         - tox-linters
-        - zuul-tox-docs
+        - zuul-nox-docs
         - zuul-operator-upload-image
         - zuul-operator-functional-k8s:
             dependencies: zuul-operator-upload-image
     promote:
       jobs:
-        - zuul-promote-docs
+        - zuul-promote-nox-docs
         - zuul-operator-promote-image
     release:
       jobs:
