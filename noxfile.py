@@ -45,3 +45,10 @@ def docs(session):
     session.install('-e', '.')
     session.run('sphinx-build', '-E', '-W', '-d', 'doc/build/doctrees',
                 '-b', 'html', 'doc/source/', 'doc/build/html')
+
+
+@nox.session(python='3')
+def linters(session):
+    set_standard_env_vars(session)
+    session.install('flake8')
+    session.run('flake8')
