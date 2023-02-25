@@ -52,3 +52,18 @@ def linters(session):
     set_standard_env_vars(session)
     session.install('flake8')
     session.run('flake8')
+
+
+@nox.session(python='3')
+def venv(session):
+    set_standard_env_vars(session)
+    session.install('-r', 'requirements.txt')
+    session.install('-e', '.')
+    session.run(*session.posargs)
+
+
+@nox.session(python='3')
+def bindep(session):
+    set_standard_env_vars(session)
+    session.install('bindep')
+    session.run('bindep', 'test')
