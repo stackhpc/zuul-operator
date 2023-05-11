@@ -215,8 +215,8 @@ class Zuul:
                     filter(namespace=self.namespace).\
                     get(name=connection['secretName'])
                 for k, v in obj.obj['data'].items():
-                    if k == 'sshkey':
-                        v = f'/etc/zuul/connections/{connection_name}/sshkey'
+                    if k in ('sshkey', 'app_key'):
+                        v = f'/etc/zuul/connections/{connection_name}/{k}'
                     else:
                         v = base64.b64decode(v).decode('utf-8')
                     connection[k] = v
