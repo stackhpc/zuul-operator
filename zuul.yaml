@@ -21,3 +21,4 @@ spec:
       baseurl: https://opendev.org
   database:
     allowUnsafeConfig: True
+    secretName: mariadb-secret
