@@ -7,7 +7,7 @@ zookeeper-tls:
   ca: /var/certs/certs/cacert.pem
 
 labels:
-  - name: main-jobs
+  - name: zuul-jobs
 
 providers:
   - name: kubernetes
@@ -15,5 +15,5 @@ providers:
     pools:
       - name: main
         labels:
-          - name: zuul
+          - name: zuul-jobs
             type: namespace
