@@ -1,0 +1,7 @@
+- tenant:
+    name: my-tenant
+    exclude-unprotected-branches: false
+    source:
+      github:
+        untrusted-projects:
+          - zuul-test-repo-a

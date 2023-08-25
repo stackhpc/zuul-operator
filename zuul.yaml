@@ -1,0 +1,23 @@
+apiVersion: operator.zuul-ci.org/v1alpha2
+kind: Zuul
+metadata:
+  name: zuul
+spec:
+  executor:
+    count: 1
+    sshkey:
+      secretName: executor-secrets
+  scheduler:
+    config:
+      secretName: zuul-tenant-config
+  launcher:
+    config:
+      secretName: zuul-nodepool-config
+  web:
+    count: 1
+  connections:
+    opendev:
+      driver: git
+      baseurl: https://opendev.org
+  database:
+    allowUnsafeConfig: True
