@@ -5,8 +5,8 @@ metadata:
 spec:
   executor:
     count: 1
-    sshkey:
-      secretName: executor-secrets
+    # sshkey:
+    #   secretName: executor-secrets
   scheduler:
     config:
       secretName: zuul-tenant-config
@@ -16,9 +16,11 @@ spec:
   web:
     count: 1
   connections:
-    opendev:
-      driver: git
-      baseurl: https://opendev.org
+    github:
+      driver: github
+      app_id: 382716
+      app_key: /gh-keys/gh-key.pem
+      secretName: github-secrets
   database:
     allowUnsafeConfig: True
     secretName: mariadb-secret

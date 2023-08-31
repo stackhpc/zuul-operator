@@ -10,3 +10,6 @@ id_rsa.pub
 *.egg-info/
 .nox
 .tox
+/stackhpc/github-secrets/*
+/stackhpc/keys/*
+force-teardown.sh

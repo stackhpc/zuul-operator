@@ -3,5 +3,9 @@
     exclude-unprotected-branches: false
     source:
       github:
+        config-projects:
+         - zuul-config-test
         untrusted-projects:
           - zuul-test-repo-a
+          - zuul-test-repo-b
+          - zuul-test-repo-c
