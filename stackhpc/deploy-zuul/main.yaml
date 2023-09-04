@@ -1,0 +1,14 @@
+- tenant:
+    name: my-tenant
+    exclude-unprotected-branches: false
+    source:
+      github:
+        config-projects:
+         - wtripp180901/zuul-config-test
+        untrusted-projects:
+          - wtripp180901/zuul-test-repo-a
+          - wtripp180901/zuul-test-repo-b
+          - wtripp180901/zuul-test-repo-c
+      opendev:
+        untrusted-projects:
+          - zuul/zuul-jobs
