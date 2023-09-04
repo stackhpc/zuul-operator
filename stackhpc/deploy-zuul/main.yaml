@@ -9,10 +9,6 @@
           - wtripp180901/zuul-test-repo-a
           - wtripp180901/zuul-test-repo-b
           - wtripp180901/zuul-test-repo-c
-
-- tenant:
-    name: zuul-jobs-playbooks
-    source:
       opendev:
         untrusted-projects:
           - zuul/zuul-jobs
