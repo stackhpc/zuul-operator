@@ -61,8 +61,14 @@ spec:
                     storageClassName:
                       type: string
                 env:
-                  type: object
-                  x-kubernetes-preserve-unknown-fields: true
+                  type: array
+                  items:
+                    type: object
+                    properties:
+                      name:
+                        type: string
+                      value:
+                        type: string
                 scheduler:
                   type: object
                   properties:
