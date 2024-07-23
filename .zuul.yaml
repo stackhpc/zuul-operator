@@ -11,14 +11,14 @@
       # see: https://github.com/eclipse/che/issues/8134
       docker_userland_proxy: false
       container_runtime: docker
-      minikube_version: v1.22.0  # NOTE(corvus): 1.23.0 failed with no matches for kind "CustomResourceDefinition" in version "apiextensions.k8s.io/v1beta1"
+      minikube_version: v1.33.1
 
 - job:
     description: Operator integration tests with Kubernetes
     name: zuul-operator-functional-k8s
     parent: zuul-operator-functional
     pre-run: playbooks/zuul-operator-functional/pre-k8s.yaml
-    nodeset: ubuntu-bionic
+    nodeset: ubuntu-noble
     vars:
       namespace: 'default'
 
@@ -37,6 +37,7 @@
       - zuul-operator-container-image
     vars: &image_vars
       zuul_work_dir: "{{ zuul.projects['opendev.org/zuul/zuul-operator'].src_dir }}"
+      docker_registry: docker.io
       docker_images:
         - context: .
           dockerfile: build/Dockerfile

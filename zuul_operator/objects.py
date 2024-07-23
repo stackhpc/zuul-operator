@@ -67,7 +67,7 @@ class ClusterRole_v1beta1(APIObject):
 
 
 class PerconaXtraDBCluster(NamespacedAPIObject):
-    version = "pxc.percona.com/v1-11-0"
+    version = "pxc.percona.com/v1"
     endpoint = "perconaxtradbclusters"
     kind = "PerconaXtraDBCluster"
 

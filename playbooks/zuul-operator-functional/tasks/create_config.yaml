@@ -21,7 +21,7 @@
             name: pod-fedora
             nodes:
               - name: container
-                label: pod-fedora-34
+                label: pod-fedora-40
 
         - nodeset:
             name: ubuntu-focal

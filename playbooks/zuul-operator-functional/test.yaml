@@ -14,7 +14,7 @@
 
     - name: get cluster ip
       when: runtime == 'minikube'
-      command: /tmp/minikube ip
+      command: minikube ip
       register: _cluster_ip
 
     - name: set cluster ip

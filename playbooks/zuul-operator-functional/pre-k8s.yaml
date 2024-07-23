@@ -9,18 +9,22 @@
         minikube_dns_resolvers:
           - '1.1.1.1'
           - '8.8.8.8'
+        kubernetes_runtime: podman
         ensure_kubernetes_minikube_addons:
           - ingress
+        ensure_kubernetes_bin_path: /usr/local/bin
     - role: use-buildset-registry
       buildset_registry_docker_user: root
   post_tasks:
-    - name: Install openshift client for k8s tasks
-      command: python3 -m pip install --user openshift
-    - name: Install websocket
+    - name: Install ansible requirements
       become: true
       package:
         name:
+          - python3-kubernetes
+          - python3-yaml
+          - python3-openshift
           - python3-websocket
+          - python3-jsonpatch
           - jq
     - name: check kubernetes connection
       command: timeout 10s kubectl get pods

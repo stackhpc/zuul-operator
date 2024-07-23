@@ -24,7 +24,7 @@ $KIND create cluster --config kind.yaml
 HEAVY=true
 
 common_images=(
-    docker.io/library/zookeeper:3.5.5
+    docker.io/library/zookeeper:3.8.4
     quay.io/jetstack/cert-manager-cainjector:v1.2.0
     quay.io/jetstack/cert-manager-controller:v1.2.0
     quay.io/jetstack/cert-manager-webhook:v1.2.0

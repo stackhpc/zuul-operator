@@ -12,9 +12,11 @@ RUN apt-get update \
 # job launched on the node to be capable of internet access.
 RUN set -e ; \
     mkdir /var/run/sshd ; \
+    sed -ri 's/UsePAM yes/UsePAM no/' /etc/ssh/sshd_config; \
+    sed -ri 's/#PermitRootLogin prohibit-password/PermitRootLogin prohibit-password/' /etc/ssh/sshd_config; \
     mkdir -p -m 0700 ~/.ssh; \
     if [ -n "${http_proxy}" ]; then \
-        sed -ri 's/#PermitUserEnvironment no/PermitUserEnvironment yes/g' /etc/ssh/sshd_config; \
+        sed -ri 's/#PermitUserEnvironment no/PermitUserEnvironment yes/' /etc/ssh/sshd_config; \
         echo "http_proxy=${http_proxy}" > ~/.ssh/environment; \
         echo "https_proxy=${https_proxy}" >> ~/.ssh/environment; \
         echo "no_proxy=${no_proxy}" >> ~/.ssh/environment; \
@@ -22,7 +24,9 @@ RUN set -e ; \
     ;
 
 COPY --chown=root:root ./ssh_host_ed25519_key /etc/ssh/ssh_host_ed25519_key
+COPY --chown=root:root ./ssh_host_ed25519_key.pub /etc/ssh/ssh_host_ed25519_key.pub
 RUN chmod 0600 /etc/ssh/ssh_host_ed25519_key
+RUN chmod 0644 /etc/ssh/ssh_host_ed25519_key.pub
 
 EXPOSE 22
 

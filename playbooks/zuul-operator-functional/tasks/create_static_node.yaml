@@ -3,7 +3,7 @@
   args:
     chdir: "{{ zuul_work_dir }}/playbooks/zuul-operator-functional/static-node"
   shell: |
-    /tmp/minikube image build . -t static-node
+    minikube image build . -t static-node
 
 - name: Create static node image
   when: "runtime == 'kind'"
@@ -42,6 +42,11 @@
               - name: zuul
                 containerPort: 19885
                 protocol: TCP
+            securityContext:
+              allowPrivilegeEscalation: true
+              privileged: true
+              capabilities:
+                add: ["SYS_ADMIN"]
             volumeMounts:
               - name: authorized-keys
                 mountPath: /sshkeys

@@ -1,20 +1,91 @@
 - hosts: all
+  vars:
+    crictl_command: "sudo podman exec -it minikube crictl"
+    zuul_log_dir: "{{ ansible_user_dir }}/zuul-output/logs"
   roles:
     - collect-container-logs
   post_tasks:
     - name: Describe resources
-      command: "bash -c 'kubectl describe {{ item }} > ~/zuul-output/logs/describe-{{ item }}.txt'"
-      ignore_errors: yes
-      loop:
-        - issuer
-        - certificate
-        - pods
-        - deployments
-        - statefulsets
-        - services
-        - secrets
-        - configmaps
+      shell: |
+        LOG_DIR={{ zuul_log_dir }}/cluster-resources
+        mkdir -p ${LOG_DIR}
+        kubectl get secrets --all-namespaces -o wide >> ${LOG_DIR}/secrets.txt
+        while read -r line; do
+            [ "$line" == "secrets" ] && continue
+            kubectl get "$line" --all-namespaces -o yaml >> ${LOG_DIR}/${line}.yaml
+            kubectl describe "$line" --all-namespaces >> ${LOG_DIR}/${line}.describe.txt
+        done < <(kubectl api-resources -o name)
+      args:
+        executable: /bin/bash
+      failed_when: no
+
+    - name: Collect system registry configs
+      shell: |
+        set -x
+        CONTAINER_SYSTEM_LOGS={{ zuul_log_dir }}/container-system
+        mkdir -p ${CONTAINER_SYSTEM_LOGS}
+        cp /etc/hosts  ${CONTAINER_SYSTEM_LOGS}/etc-hosts
+        cp /etc/containers/registries.conf ${CONTAINER_SYSTEM_LOGS}/etc-containers-registries.conf
+      failed_when: no
+
+    - name: Collect minikube registry conf
+      shell: |
+        set -x
+        CONTAINER_MINIKUBE_LOGS={{ zuul_log_dir }}/container-minikube
+        mkdir -p ${CONTAINER_MINIKUBE_LOGS}
+        minikube cp minikube:/etc/hosts  ${CONTAINER_MINIKUBE_LOGS}/etc-hosts
+        minikube cp minikube:/etc/containers/registries.conf ${CONTAINER_MINIKUBE_LOGS}/etc-containers-registries.conf
+      failed_when: no
+
+    - name: Get logs from minikube and the operator
+      shell: |
+        minikube logs > {{ zuul_log_dir }}/minikube.txt
+        kubectl logs -l name=zuul-operator --tail=-1 > {{ zuul_log_dir }}/logs/zuul-operator-logs.txt
+        sudo podman inspect minikube > {{ zuul_log_dir }}/minikube-container.txt
+      environment:
+        MINIKUBE_HOME: "{{ ansible_user_dir }}"
+      failed_when: false
+
+    - name: Get kubelet and crio logs inside podman container
+      shell: |
+        set -x
+        KUBELET_LOG_DIR={{ zuul_log_dir }}/kubelet
+        CRIO_LOG_DIR={{ zuul_log_dir }}/minikube-crio
+        CONTAINERS_LOG_DIR={{ zuul_log_dir }}/containers
+        mkdir -p ${KUBELET_LOG_DIR}
+        mkdir -p ${CRIO_LOG_DIR}
+        mkdir -p ${CONTAINERS_LOG_DIR}
+        JOURNALCTL_CMD="sudo podman exec -it minikube journalctl"
+        ${JOURNALCTL_CMD} -u kubelet.service >> ${KUBELET_LOG_DIR}/kubelet.txt
+        ${JOURNALCTL_CMD} -u crio.service >> ${CRIO_LOG_DIR}/crio.txt
+      failed_when: false
+
+    - name: Get all containers
+      command: "{{ crictl_command }} ps -a -o json"
+      register: crictl_ps
+
+    - name: Loop through containers and collect logs
+      shell: >-
+       {{ crictl_command }} logs -t {{ container_id }} >
+       {{ zuul_log_dir }}/containers/{{ container_log_name }}
+      failed_when: no
+      vars:
+        crictl_containers: >-
+          {{ crictl_ps.stdout | from_json | json_query('containers') | list }}
+        container_id: >-
+          {{ container | json_query('id') }}
+        pod_name: >-
+          {{ container | json_query('labels."io.kubernetes.pod.name"') }}
+        pod_namespace: >-
+          {{ container | json_query('labels."io.kubernetes.pod.namespace"') }}
+        container_name: >-
+          {{ container | json_query('labels."io.kubernetes.container.name"') }}
+        container_log_name: >-
+           {{ pod_namespace }}--{{ pod_name }}--{{ container_name }}.txt
+      loop: "{{ crictl_containers }}"
+      loop_control:
+        loop_var: container
 
     - name: Delete empty container logs
-      command: "find {{ ansible_user_dir }}/zuul-output/logs/ -type f -empty -delete"
+      command: "find {{ zuul_log_dir }} -type f -empty -delete"
       ignore_errors: yes
