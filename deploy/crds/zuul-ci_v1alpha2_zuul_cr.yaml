@@ -3,7 +3,7 @@ kind: Zuul
 metadata:
   name: zuul
 spec:
-  imagePrefix: docker.io/zuul
+  imagePrefix: quay.io/zuul-ci
   executor:
     count: 1
     sshkey:

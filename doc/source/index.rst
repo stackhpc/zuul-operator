@@ -232,7 +232,7 @@ verbatim):
    apiVersion: zuul-ci.org/v1alpha2
    kind: Zuul
    spec:
-     imagePrefix: docker.io/zuul
+     imagePrefix: quay.io/zuul-ci
      imagePullSecrets:
        - name: my-docker-secret
      zuulImageVersion: latest
@@ -289,7 +289,7 @@ verbatim):
    .. attr:: spec
 
       .. attr:: imagePrefix
-         :default: docker.io/zuul
+         :default: quay.io/zuul-ci
 
          The prefix to use for images.  The image names are fixed
          (``zuul-executor``, etc).  However, changing the prefix will

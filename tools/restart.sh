@@ -14,6 +14,9 @@
 # License for the specific language governing permissions and limitations
 # under the License.
 
+# NOTE(jan.gutter): this local developer script still references images from a
+# previous release of zuul-operator.
+
 KIND="${KIND:-kind}"
 KUBECTL="${KUBECTL:-kubectl}"
 DOCKER="${DOCKER:-docker}"

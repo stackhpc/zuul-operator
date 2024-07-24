@@ -25,7 +25,7 @@
 - job:
     description: Image and buildset registry job
     name: zuul-operator-build-image
-    parent: opendev-build-docker-image
+    parent: opendev-build-container-image
     allowed-projects: zuul/zuul-operator
     requires:
       - zuul-container-image
@@ -37,40 +37,55 @@
       - zuul-operator-container-image
     vars: &image_vars
       zuul_work_dir: "{{ zuul.projects['opendev.org/zuul/zuul-operator'].src_dir }}"
-      docker_registry: docker.io
-      docker_images:
+      promote_container_image_method: intermediate-registry
+      promote_container_image_job: zuul-operator-upload-image
+      container_command: docker
+      container_images:
         - context: .
-          dockerfile: build/Dockerfile
-          repository: zuul/zuul-operator
+          container_filename: build/Dockerfile
+          registry: quay.io
+          repository: quay.io/zuul-ci/zuul-operator
           tags:
             # If zuul.tag is defined: [ '3', '3.19', '3.19.0' ].  Only works for 3-component tags.
             # Otherwise: ['latest']
             "{{ zuul.tag is defined | ternary([zuul.get('tag', '').split('.')[0], '.'.join(zuul.get('tag', '').split('.')[:2]), zuul.get('tag', '')], ['latest']) }}"
 
 - secret:
-    name: zuul-operator-dockerhub
+    name: zuul-operator-registry-credentials
     data:
-      username: zuulzuul
-      password: !encrypted/pkcs1-oaep
-        - QVrNMxcxfu35rLxt2m/ZGWPRHDm0rbw/rybpkbuL8B7v0CvJjgsLxfZ2uonMRINk53gex
-          TN9Y6vdM3YUu/Bdu4Z7cTKV+ohBRdCbEzJAVHJGclYRAFVzAMLDgKWZRFNrJVY1/0U9AZ
-          a4F32AS8hWAdH03Ntv77cK+NX/y0pSAySin7o45XrHAA21vAASp9PSGLCSCB5pVfHELyR
-          lgpu4+NMh2ocbbDwzQFAJbYgb60OYRYlsvI4ECCvDDm2Jxma6iOYnSe62E8v/K7fhFzVr
-          orBystkKaOy1154aGYTajtR0vebTGw6XJt4SYID3dHKS9XTwjpTEJySfFtSRDHDi0lhdN
-          gSS7ZojBlOrj1/a/Oddca9iGgjqLaC2iOJGsABXXP14WambZNvDG07/eEaS2dhV745k06
-          HPdapriUCuTBqivSkItighYYB8eh9LkqwVxXJ/feyewMERasWkKPDkT/mX5+R1KJCTnwS
-          xmEvngPk5gLwpDexLL+nmNahYNbz7alzFUGCSR7jTLORZUgimGDzfaguTHZNhzb4jE9kU
-          0s5nzOti9LdQNCkKVAvRCsOyp7+U9zvf6LHQhO35ivW3vrSmEfyqQqUVdJMBHhBE8M0jj
-          AYLhYdFc748RTCVJzka6uAQ69QJuv0wSP0+MHKy39OrnOSDZUGm1dkeTQwqpWA=
+      quay.io:
+        username: zuul-ci+opendevzuul
+        password: !encrypted/pkcs1-oaep
+          - QEH6ht5DiBnOOaANKQvuLB6Ebe2w9tsnyVKbn7o+ULtt3Yl4og4m5pDjDHriUhyiTUFn8
+            lBh21BNtxg0zpjezUPNMIZQLg3lcmQZ29sZm6c3rIWcy9VmU287rZCN725AKzXYsy80VT
+            1Glk7GlyH9CNG2foUfEB+NY1rfjYTaGVJiz3x/SXe4LuSZZftyRyZlOZJ8QTw5cKKu7kz
+            xuiTwY9CaARkqyBULnf8XY4DeVYVq7E63UBMJ964BFm+KgBQQr1UUvP+TYC9YOMFzTZkO
+            EdceMMsZPYJhlM3FQXCEzfTlo+aEGijuFFpEGLhy+vd1J3PMRbrLHG1JfAK7bIXBSx8QV
+            +n6xO8290ojjyKTnwlPvFGoaxZ4cEP/r4sPl6PDZLuW7aKOzVRacojuVRijDHU/E9zHzT
+            tN2nwm3ZiMh5Sk59NAiW8CJuVuS1S4PCe5qs7k9efyBXPHXxSFt/StiLVZd0ftzZZxZ07
+            rGsb4gZk8QWNpShT3UthzieSCDvIl7sSmZVwKHZlwnI2JNsgSXkNvLeg5LUUoOv8w7tDG
+            EIxAUHxiTZqZLIb/zP0k6ET84HDXbOG3+8EhxNIMKPZeuykA+ycHwJQxJ7ykUGPKX/76v
+            GGtsGKSZlWjxT/Z3Xz5WFSy4iEG/1crrY1+vWPkb4Wgp5XFHo4SRR1TnJpZBQM=
+        api_token: !encrypted/pkcs1-oaep
+          - E8MqHar0rNwH/NK8CGyGI+b46NIbfwxCTJuhfs1xak6xrZPHC8C9IJdlC6IIxNlKE/8ND
+            KywN9Tx+wSnnOpTLWZmMmQSKAelZ3679q1QHPtGW6GZDE6OH2LWX7YCnD4z4XKZrzdRet
+            ZnYDNxVepg+V4S5kzrmRoGTcU1nMGHUcTnMTPKbs3hziS3tmNFUWTDUICxM7f6LpxlDfK
+            2tNSjLJ0gjmQ9NiyLt1/4+MJ9yCeZuFdWxsJd8f2y7b5fyrSXpWWl4q0E7x+3S5H5B7BK
+            7P7hmyCh3A7EURGNF2OkY8xKbwZHaKmUmKSKuhzxSYpThciJS6r0MLGswYgq9cDUUkQU7
+            uDQQPin6uDzmwH/I8g6eB9mjmAKc0yPpb4TmVQVQIy9bT5A+3RAWhv7FAzJZCsQRtrE/2
+            gChuGv3MCGHxrZr7DhI5A77a7vqxp4YR38OmKdCe2VfL0alSJsrzp1UGZKW7/uBKZjKMw
+            Mx4uE3yr5HyA0MCI21BXjWJYClFaSJ7FFFxsoCpYgVYzWM5CKGsytZYuWffuWHdnL+JdO
+            44OmxSw4On0E9vf0mSgMlY5JIYIwhoDWhPTI0lGgf4YBnOFnK1o2LLpv0BT/HopkgdJvQ
+            nmJMvnMKV5KF8Mcqt+T0esX8A1pkyrfpcanZa5X3F3ukl90UVH3Pt+MhDn5xjA=
 
 - job:
-    description: Build Docker images and upload to Docker Hub.
+    description: Build container images and upload.
     name: zuul-operator-upload-image
-    parent: opendev-upload-docker-image
+    parent: opendev-upload-container-image
     allowed-projects: zuul/zuul-operator
     secrets:
-      name: docker_credentials
-      secret: zuul-operator-dockerhub
+      name: container_registry_credentials
+      secret: zuul-operator-registry-credentials
       pass-to-parent: true
     requires:
       - zuul-container-image
@@ -85,11 +100,11 @@
 - job:
     description: Promote previously uploaded images.
     name: zuul-operator-promote-image
-    parent: opendev-promote-docker-image
+    parent: opendev-promote-container-image
     allowed-projects: zuul/zuul-operator
     secrets:
-      name: docker_credentials
-      secret: zuul-operator-dockerhub
+      name: container_registry_credentials
+      secret: zuul-operator-registry-credentials
       pass-to-parent: true
     nodeset:
       nodes: []
@@ -119,4 +134,4 @@
         - zuul-operator-upload-image:
             vars:
               <<: *image_vars
-              upload_docker_image_promote: false
+              upload_container_image_promote: false

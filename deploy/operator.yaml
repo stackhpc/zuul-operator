@@ -15,5 +15,5 @@ spec:
       serviceAccountName: zuul-operator
       containers:
         - name: operator
-          image: "docker.io/zuul/zuul-operator"
+          image: "quay.io/zuul-ci/zuul-operator"
           imagePullPolicy: "IfNotPresent"

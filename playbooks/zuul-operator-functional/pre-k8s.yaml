@@ -14,7 +14,6 @@
           - ingress
         ensure_kubernetes_bin_path: /usr/local/bin
     - role: use-buildset-registry
-      buildset_registry_docker_user: root
   post_tasks:
     - name: Install ansible requirements
       become: true
