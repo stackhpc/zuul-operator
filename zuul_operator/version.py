@@ -15,18 +15,15 @@
 
 import json
 
-import pbr.version
-import pkg_resources
+from importlib import metadata as importlib_metadata
 
-version_info = pbr.version.VersionInfo('zuul-operator')
-release_string = version_info.release_string()
+zuul_operator_distribution = importlib_metadata.distribution('zuul-operator')
+release_string = zuul_operator_distribution.version
 
 is_release = None
 git_version = None
 try:
-    _metadata = json.loads(
-        pkg_resources.get_distribution(
-            'zuul-operator').get_metadata('pbr.json'))
+    _metadata = json.loads(zuul_operator_distribution.read_text('pbr.json'))
     if _metadata:
         is_release = _metadata['is_release']
         git_version = _metadata['git_version']

@@ -24,8 +24,8 @@ class ZuulOperatorCommand:
         self.op = ZuulOperator()
 
     def _get_version(self):
-        from zuul_operator.version import version_info as version_info
-        return "Zuul Operator version: %s" % version_info.release_string()
+        from zuul_operator.version import release_string
+        return "Zuul Operator version: %s" % release_string
 
     def run(self):
         parser = argparse.ArgumentParser(

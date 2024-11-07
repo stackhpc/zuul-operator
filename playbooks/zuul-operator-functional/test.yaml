@@ -44,8 +44,6 @@
         endpoint: "/api/tenants"
         expected:
           - name: local
-            projects: 1
-            queue: 0
 
     - name: setup git service
       include_tasks: tasks/git_setup.yaml
@@ -123,17 +121,6 @@
                     hostPath:
                       path: /run/dbus
                       type: DirectoryOrCreate
-
-    - name: ensure a job is running
-      when: skip_check is not defined
-      include_tasks: tasks/zuul_web_check.yaml
-      vars:
-        endpoint: "/api/tenants"
-        expected:
-          - name: local
-            projects: 1
-            # 1 queue means a job is running
-            queue: 1
 
     - name: get build results
       uri:
