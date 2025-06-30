@@ -213,6 +213,13 @@ spec:
         - name: zookeeper-client-tls
           mountPath: /tls/client
           readOnly: true
+        {%- for connection_name, connection in connections.items() %}
+        {%- if 'secretName' in connection %}
+        - name: connection-{{ connection_name }}
+          mountPath: /etc/zuul/connections/{{ connection_name }}
+          readOnly: true
+        {%- endif %}
+        {%- endfor %}
         env: {{ spec.env | zuul_to_json }}
       volumes:
       - name: zuul-config
@@ -221,6 +228,13 @@ spec:
       - name: zookeeper-client-tls
         secret:
           secretName: zookeeper-client-tls
+      {%- for connection_name, connection in connections.items() %}
+      {%- if 'secretName' in connection %}
+      - name: connection-{{ connection_name }}
+        secret:
+          secretName: {{ connection['secretName'] }}
+      {%- endif %}
+      {%- endfor %}
 ---
 apiVersion: apps/v1
 kind: Deployment
