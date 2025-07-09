@@ -19,7 +19,6 @@ import string
 import kopf
 import yaml
 import jinja2
-import kubernetes
 from kubernetes.client import Configuration
 from kubernetes.client.api import core_v1_api
 from kubernetes.stream import stream
@@ -82,7 +81,6 @@ def update_secret(api, namespace, name, string_data):
 
 
 def pod_exec(namespace, name, command):
-    kubernetes.config.load_kube_config()
     try:
         c = Configuration().get_default_copy()
     except AttributeError:

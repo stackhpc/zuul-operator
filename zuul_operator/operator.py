@@ -174,6 +174,11 @@ def update_fn(name, namespace, logger, old, new, memo, **kwargs):
     if spec_changed:
         zuul.create_zuul()
 
+    if conf_changed:
+        if spec_changed:
+            zuul.wait_for_statefulset('zuul-scheduler')
+        zuul.smart_reconfigure()
+
     memoize_secrets(memo, logger)
 
 

@@ -16,6 +16,7 @@ import kopf
 import copy
 import base64
 import hashlib
+import time
 
 import jinja2
 import pykube
@@ -409,6 +410,29 @@ class Zuul:
         }
         utils.apply_file(self.api, 'zuul.yaml', namespace=self.namespace, **kw)
         self.create_nodepool()
+
+    def wait_for_statefulset(self, set_name, tries=6, delay=10):
+        self.log.info("Waiting for StatefulSet %s to finish rollout", set_name)
+        for _ in range(tries):
+            scheduler_set = objects.StatefulSet.objects(self.api).filter(
+                namespace=self.namespace,
+                selector={'app.kubernetes.io/instance': self.name,
+                          'app.kubernetes.io/component': set_name,
+                          'app.kubernetes.io/name': 'zuul',
+                          'app.kubernetes.io/part-of': 'zuul'}).get(
+                              name=set_name)
+            spec = scheduler_set.obj['spec']
+            status = scheduler_set.obj['status']
+            if (spec['replicas'] == status.get('replicas', None) and
+                spec['replicas'] == status.get('currentReplicas', None) and
+                spec['replicas'] == status.get('readyReplicas', None) and
+                (status.get('updateRevision', None) ==
+                 status.get('currentRevision', None))):
+                self.log.info("StatefulSet %s completed rollout", set_name)
+                return
+            time.sleep(delay)
+        self.log.error("StatefulSet did not finish rollout after %d seconds",
+                       tries * delay)
 
     def smart_reconfigure(self):
         self.log.info("Smart reconfigure")

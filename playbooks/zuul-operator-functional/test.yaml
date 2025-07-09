@@ -161,7 +161,7 @@
         var: console_stream
 
     - name: fail if console stream does not contains expected job output
-      when: "'Job console starting...' not in console_stream.stdout"
+      when: "'Job console starting' not in console_stream.stdout"
       # It seems like wsdump.py doesn't always stay connected for the whole job duration
       # when: "'Demo job is running' not in console_stream.stdout"
       fail:
