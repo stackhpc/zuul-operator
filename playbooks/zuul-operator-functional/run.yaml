@@ -59,6 +59,8 @@
               secretName: zuul-registry-conf
           preview:
             count: 1
+          web:
+            root: "http://zuul"
 
     - name: Wait for services
       include_tasks: ./tasks/wait_services.yaml
