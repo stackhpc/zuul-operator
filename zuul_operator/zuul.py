@@ -224,7 +224,21 @@ class Zuul:
                         v = base64.b64decode(v).decode('utf-8')
                     connection[k] = v
 
-        kw = {'connections': connections,
+        self.spec.setdefault('auth', {})
+        auth = self.spec['auth']
+
+        # Copy in any information from auth secrets
+        for auth_name, auth_config in auth.items():
+            if 'secretName' in auth_config:
+                obj = objects.Secret.objects(self.api).\
+                    filter(namespace=self.namespace).\
+                    get(name=auth_config['secretName'])
+                for k, v in obj.obj['data'].items():
+                    auth_config[k] = base64.b64decode(v).decode('utf-8')
+                del auth_config['secretName']
+
+        kw = {'auth': auth,
+              'connections': connections,
               'spec': self.spec,
               'keystore_password': self.get_keystore_password()}
 
@@ -409,6 +423,7 @@ class Zuul:
             'spec': self.spec,
             'manage_zk': self.manage_zk,
             'manage_db': self.manage_db,
+            'auth': self.spec.get('auth', {}),
         }
         utils.apply_file(self.api, 'zuul.yaml', namespace=self.namespace, **kw)
         self.create_nodepool()

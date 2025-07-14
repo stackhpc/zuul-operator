@@ -159,6 +159,10 @@ def update_fn(name, namespace, logger, old, new, memo, **kwargs):
         logger.info("Connections changed")
         conf_changed = True
 
+    if new.get('auth') != old.get('auth'):
+        logger.info("Auth changed")
+        conf_changed = True
+
     for key in ['executor', 'merger', 'scheduler', 'web', 'fingergw']:
         if new.get(key) != old.get(key):
             logger.info(f"{key} changed")

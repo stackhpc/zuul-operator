@@ -121,6 +121,12 @@
                     hostPath:
                       path: /run/dbus
                       type: DirectoryOrCreate
+              auth:
+                google_auth:
+                  default: true
+                  driver: OpenIDConnect
+                  realm: test
+                  issuer_id: "https://accounts.google.com"
 
     - name: get build results
       uri:

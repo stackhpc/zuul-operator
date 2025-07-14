@@ -212,3 +212,6 @@ spec:
                           type: string
                     storageClassName:
                       type: string
+                auth:
+                  type: object
+                  x-kubernetes-preserve-unknown-fields: true
