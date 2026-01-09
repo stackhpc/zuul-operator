@@ -56,27 +56,27 @@
       quay.io:
         username: zuul-ci+opendevzuul
         password: !encrypted/pkcs1-oaep
-          - QEH6ht5DiBnOOaANKQvuLB6Ebe2w9tsnyVKbn7o+ULtt3Yl4og4m5pDjDHriUhyiTUFn8
-            lBh21BNtxg0zpjezUPNMIZQLg3lcmQZ29sZm6c3rIWcy9VmU287rZCN725AKzXYsy80VT
-            1Glk7GlyH9CNG2foUfEB+NY1rfjYTaGVJiz3x/SXe4LuSZZftyRyZlOZJ8QTw5cKKu7kz
-            xuiTwY9CaARkqyBULnf8XY4DeVYVq7E63UBMJ964BFm+KgBQQr1UUvP+TYC9YOMFzTZkO
-            EdceMMsZPYJhlM3FQXCEzfTlo+aEGijuFFpEGLhy+vd1J3PMRbrLHG1JfAK7bIXBSx8QV
-            +n6xO8290ojjyKTnwlPvFGoaxZ4cEP/r4sPl6PDZLuW7aKOzVRacojuVRijDHU/E9zHzT
-            tN2nwm3ZiMh5Sk59NAiW8CJuVuS1S4PCe5qs7k9efyBXPHXxSFt/StiLVZd0ftzZZxZ07
-            rGsb4gZk8QWNpShT3UthzieSCDvIl7sSmZVwKHZlwnI2JNsgSXkNvLeg5LUUoOv8w7tDG
-            EIxAUHxiTZqZLIb/zP0k6ET84HDXbOG3+8EhxNIMKPZeuykA+ycHwJQxJ7ykUGPKX/76v
-            GGtsGKSZlWjxT/Z3Xz5WFSy4iEG/1crrY1+vWPkb4Wgp5XFHo4SRR1TnJpZBQM=
+          - R7XzsGx4q6LO5IQtTrISOmedzaWqIoJIlMpzwqrMyXPW/6y1BAFXmZoKvUrik9/fuhN+3
+            43bxAR251GdodcDMeszGHJ3POuyV5ZqUqouKVbdWvEZ8UzKzQ2A6HN/sc/z6DzqZcfbi1
+            6SfnWFhLTWl9f9yPaLkrOIaYY4xZZ8wn1D1wvMM3XZ580X/cjjJi5FCPq4iw+FZTrQssi
+            jHMlwRiGpWHFlcd46xSItCwXTBv0O4xXoYkHn6StMakXIebraK28iBDQRPocQajfYuPF0
+            ZIyDNXb72WcXZ5ruM5JVEbuqD29qQZUxKjGNF4lZyIz/fJW7fh17pxOX3wtJYBdntZKTd
+            bJQsVkUJ3xr5R3DhO5e8U1TPn4lCWQ4eLzCMWt7Poo7+ivHMkrlahqv1LkIwoLdG76IU8
+            I2HSaGa4CTl+ijVsf0kJBxnNiA64kQGVchX1obC7C1QQN4etumCcHDNwocoG0g8DaA2rX
+            1VFVnCwTKOWY0S/qF+Jv3uAOIt9MOdFANmk3DR+b7hWT0SaDg7/lP03L6Z9cDcoF2FUqe
+            M1+0oxX5L5da+pGcONCBIU2lHhFKLjspSTjsLuG/ipx9DXnldGXmruH5TFrN88ceoT+fR
+            MtlGGWNBLqV0Q1QHkHZOPBlbz4/FQ/QzkKmEA2DOELzwSyjR4K4U8X2WlPco/A=
         api_token: !encrypted/pkcs1-oaep
-          - E8MqHar0rNwH/NK8CGyGI+b46NIbfwxCTJuhfs1xak6xrZPHC8C9IJdlC6IIxNlKE/8ND
-            KywN9Tx+wSnnOpTLWZmMmQSKAelZ3679q1QHPtGW6GZDE6OH2LWX7YCnD4z4XKZrzdRet
-            ZnYDNxVepg+V4S5kzrmRoGTcU1nMGHUcTnMTPKbs3hziS3tmNFUWTDUICxM7f6LpxlDfK
-            2tNSjLJ0gjmQ9NiyLt1/4+MJ9yCeZuFdWxsJd8f2y7b5fyrSXpWWl4q0E7x+3S5H5B7BK
-            7P7hmyCh3A7EURGNF2OkY8xKbwZHaKmUmKSKuhzxSYpThciJS6r0MLGswYgq9cDUUkQU7
-            uDQQPin6uDzmwH/I8g6eB9mjmAKc0yPpb4TmVQVQIy9bT5A+3RAWhv7FAzJZCsQRtrE/2
-            gChuGv3MCGHxrZr7DhI5A77a7vqxp4YR38OmKdCe2VfL0alSJsrzp1UGZKW7/uBKZjKMw
-            Mx4uE3yr5HyA0MCI21BXjWJYClFaSJ7FFFxsoCpYgVYzWM5CKGsytZYuWffuWHdnL+JdO
-            44OmxSw4On0E9vf0mSgMlY5JIYIwhoDWhPTI0lGgf4YBnOFnK1o2LLpv0BT/HopkgdJvQ
-            nmJMvnMKV5KF8Mcqt+T0esX8A1pkyrfpcanZa5X3F3ukl90UVH3Pt+MhDn5xjA=
+          - noles77Ag87BegYa3HbRcLRT9z99HML5NR0DtcjbWbF1megRJh/l7KRrU8Y9qEHuXo82Q
+            LRnhfiTGHXuHYR+P8KJVDOV1RZLJzDSI6MxNdS7+at8vi2RiXhR5K56xFeCiCfbbmwUHh
+            xgvt1Tp2QBgVQKOY/SdT3rUh9A6+7510roOocKnW6aOJxTZafdE4t9J92t6FAPlboC3L+
+            lcvgbxEnajY+kVBaa8KSmU7zQkxyHSpTTi1VnUCCZXcy0ljTYXIbZYO/WDKepudQmknDy
+            QwdMm4MyQDPRcIaw80RakJSPfBmYC0IyGEeN6mC5nmrgcX83owHawS2yMEdM3+wPeSN22
+            0Q6htKJ084JsDoz9BDYfoPhSpaWDbaNjDgp5GqGpX8TdtAcOVt175VA2xbFDeUxyV8aMa
+            t2Uuf1WU0ixTd+JpqRwNIj58UZ7ng8Uiy55D1OL1U9jqxBn+E0WrxnMRhCVRHaZktp0FW
+            ZDMczgKE8gs+5m7xjgBNiVkctgR43ocHCXxAgvb5BSzaSj+n7mjIoLUKFRzQKzzpKlpLc
+            20zmYoB2W7Va85pEEnwmsKgGG++jsu9Zltzlr1WgkScWIO1/RatPTTKZedXFTILPV4PT6
+            e+cQdaOI/U/nW/9ejRIrXaqMu6yhAp5w/19HBpCsaa0ZGWgKRMp7UdQv2sNWTM=
 
 - job:
     description: Build container images and upload.
