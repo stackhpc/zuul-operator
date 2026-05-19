@@ -116,10 +116,28 @@ spec:
                   properties:
                     count:
                       type: integer
+                    command_socket:
+                      type: string
+                    git_dir:
+                      type: string
+                    git_http_low_speed_limit:
+                      type: integer
+                    git_http_low_speed_time:
+                      type: integer
+                    git_timeout:
+                      type: integer
                     git_user_email:
                       type: string
                     git_user_name:
                       type: string
+                    log_config:
+                      type: string
+                    pidfile:
+                      type: string
+                    prometheus_addr:
+                      type: string
+                    prometheus_port:
+                      type: integer
                 web:
                   type: object
                   properties:
