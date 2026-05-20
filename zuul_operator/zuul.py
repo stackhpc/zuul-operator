@@ -69,6 +69,7 @@ class Zuul:
 
         self.spec.setdefault('scheduler', {})['tenant_config'] = \
             '/etc/zuul/tenant/main.yaml'
+        self.spec.setdefault('scheduler', {}).setdefault('count', 1)
         self.spec.setdefault('scheduler', {}).setdefault(
             'storageClassName', '')
         self.spec.setdefault('executor', {}).setdefault('count', 1)
