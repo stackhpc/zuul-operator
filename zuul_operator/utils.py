@@ -51,6 +51,8 @@ def apply_file(api, fn, **kw):
         if not obj.exists():
             obj.create()
         else:
+            if document.get('kind') == 'StatefulSet':
+                document.get('spec', {}).pop('volumeClaimTemplates', None)
             obj.update()
 
 
