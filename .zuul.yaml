@@ -1,5 +1,5 @@
 - job:
-    description: Operator integration tests
+    description: Operator integration tests TEST
     name: zuul-operator-functional
     abstract: true
     run:
