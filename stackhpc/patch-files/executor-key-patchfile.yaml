@@ -1,0 +1,12 @@
+spec:
+  template:
+    spec:
+      containers:
+        - name: executor
+          volumeMounts:
+            - name: gh-keys
+              mountPath: /gh-keys
+      volumes:
+        - name: gh-keys
+          secret:
+            secretName: gh-key

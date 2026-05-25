@@ -1,0 +1,24 @@
+zookeeper-servers:
+  - host: zookeeper
+    port: 2281
+
+zookeeper-tls:
+  cert: /var/certs/certs/client.pem
+  key: /var/certs/keys/clientkey.pem
+  ca: /var/certs/certs/cacert.pem
+
+labels:
+  - name: zuul-jobs-ns
+  - name: zuul-job-pod
+
+providers:
+  - name: kubernetes
+    driver: kubernetes
+    pools:
+      - name: main
+        labels:
+          - name: zuul-jobs-ns
+            type: namespace
+          - name: zuul-job-pod
+            type: pod
+            image: docker.io/rockylinux:8
