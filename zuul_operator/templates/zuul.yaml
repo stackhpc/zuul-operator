@@ -353,7 +353,7 @@ spec:
         {%- endfor %}
         securityContext:
           privileged: true
-        terminationGracePeriodSeconds: {{ spec.executor.terminationGracePeriodSeconds }}
+      terminationGracePeriodSeconds: {{ spec.executor.terminationGracePeriodSeconds }}
       volumes:
       {%- if spec.executor.storageClassName == "" %}
       - name: zuul-var
