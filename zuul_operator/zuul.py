@@ -496,7 +496,7 @@ class Zuul:
 
         for obj in objects.Pod.objects(self.api).filter(
                 namespace=self.namespace,
-                selector={'app.kubernetes.io/instance': 'zuul',
+                selector={'app.kubernetes.io/instance': self.name,
                           'app.kubernetes.io/component': 'zuul-scheduler',
                           'app.kubernetes.io/name': 'zuul'}):
             self.log.info("Waiting for config to update on %s",
