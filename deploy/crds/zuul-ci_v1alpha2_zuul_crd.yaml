@@ -111,6 +111,11 @@ spec:
                       type: integer
                       default: 250
                       minimum: -1
+                    storageClassName:
+                      type: string
+                    storageSize:
+                      type: string
+                      default: "50Gi"
                 merger:
                   type: object
                   properties:
@@ -138,6 +143,11 @@ spec:
                       type: string
                     prometheus_port:
                       type: integer
+                    storageClassName:
+                      type: string
+                    storageSize:
+                      type: string
+                      default: "50Gi"
                 web:
                   type: object
                   properties:

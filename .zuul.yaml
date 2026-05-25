@@ -26,11 +26,7 @@
     description: Image and buildset registry job
     name: zuul-operator-build-image
     parent: opendev-build-container-image
-    allowed-projects: zuul/zuul-operator
-    requires:
-      - zuul-container-image
-      - zuul-registry-container-image
-      - nodepool-container-image
+    allowed-projects: stackhpc/zuul-operator
       - python-builder-3.11-bookworm-container-image
       - python-base-3.11-bookworm-container-image
     provides:
@@ -82,15 +78,11 @@
     description: Build container images and upload.
     name: zuul-operator-upload-image
     parent: opendev-upload-container-image
-    allowed-projects: zuul/zuul-operator
+    allowed-projects: stackhpc/zuul-operator
     secrets:
       name: container_registry_credentials
       secret: zuul-operator-registry-credentials
       pass-to-parent: true
-    requires:
-      - zuul-container-image
-      - zuul-registry-container-image
-      - nodepool-container-image
     provides:
       - zuul-operator-container-image
       - python-builder-3.11-bookworm-container-image

@@ -76,7 +76,11 @@ class Zuul:
             'terminationGracePeriodSeconds', 21600)
         self.spec.setdefault('executor', {}).setdefault(
             'disk_limit_per_job', 250)
+        self.spec.setdefault('executor', {}).setdefault('storageClassName', '')
+        self.spec.setdefault('executor', {}).setdefault('storageSize', '50Gi')
         self.spec.setdefault('merger', {}).setdefault('count', 0)
+        self.spec.setdefault('merger', {}).setdefault('storageClassName', '')
+        self.spec.setdefault('merger', {}).setdefault('storageSize', '50Gi')
         self.spec.setdefault('web', {}).setdefault('count', 1)
         self.spec.setdefault('fingergw', {}).setdefault('count', 1)
         self.spec.setdefault('preview', {}).setdefault('count', 0)
