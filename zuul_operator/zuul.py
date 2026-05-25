@@ -49,6 +49,12 @@ class Zuul:
         self.nodepool_secret = spec.get('launcher', {}).get('config', {}).\
             get('secretName')
 
+        launcher = self.spec.setdefault('launcher', {})
+        launcher.setdefault('type', 'nodepool')
+        launcher.setdefault('count', 1)
+        launcher.setdefault('storageClassName', '')
+        launcher.setdefault('storageSize', '50Gi')
+
         zk_spec = self.spec.setdefault('zookeeper', {})
         zk_spec.setdefault('storageClassName', '')
         zk_str = spec.get('zookeeper', {}).get('hosts')
@@ -367,6 +373,17 @@ class Zuul:
             except pykube.exceptions.ObjectDoesNotExist:
                 pass
 
+    def create_zuul_launcher(self):
+        kw = {
+            'zuul_conf_sha': self.zuul_conf_sha,
+            'instance_name': self.name,
+            'connections': self.spec['connections'],
+            'external_config': self.spec.get('externalConfig', {}),
+            'spec': self.spec,
+        }
+        utils.apply_file(self.api, 'zuul-launcher.yaml',
+                         namespace=self.namespace, **kw)
+
     def write_registry_conf(self):
         config_secret = self.spec['registry'].get('config', {}).\
             get('secretName')
@@ -430,7 +447,11 @@ class Zuul:
             'auth': self.spec.get('auth', {}),
         }
         utils.apply_file(self.api, 'zuul.yaml', namespace=self.namespace, **kw)
-        self.create_nodepool()
+        launcher_type = self.spec['launcher']['type']
+        if launcher_type in ('nodepool', 'both'):
+            self.create_nodepool()
+        if launcher_type in ('zuul-launcher', 'both'):
+            self.create_zuul_launcher()
 
     def wait_for_statefulset(self, set_name, tries=6, delay=10):
         self.log.info("Waiting for StatefulSet %s to finish rollout", set_name)
