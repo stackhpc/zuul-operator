@@ -355,8 +355,10 @@ spec:
           privileged: true
         terminationGracePeriodSeconds: {{ spec.executor.terminationGracePeriodSeconds }}
       volumes:
+      {%- if spec.executor.storageClassName == "" %}
       - name: zuul-var
         emptyDir: {}
+      {%- endif %}
       - name: zuul-config
         secret:
           secretName: zuul-config
@@ -378,6 +380,18 @@ spec:
           secretName: {{ connection['secretName'] }}
       {%- endif %}
       {%- endfor %}
+  {%- if spec.executor.storageClassName != "" %}
+  volumeClaimTemplates:
+  - metadata:
+      name: zuul-var
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: {{ spec.executor.storageSize }}
+      storageClassName: {{ spec.executor.storageClassName }}
+  {%- endif %}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
@@ -433,8 +447,10 @@ spec:
         {%- endfor %}
         terminationGracePeriodSeconds: 3600
       volumes:
+      {%- if spec.merger.storageClassName == "" %}
       - name: zuul-var
         emptyDir: {}
+      {%- endif %}
       - name: zuul-config
         secret:
           secretName: zuul-config
@@ -448,6 +464,18 @@ spec:
           secretName: {{ connection['secretName'] }}
       {%- endif %}
       {%- endfor %}
+  {%- if spec.merger.storageClassName != "" %}
+  volumeClaimTemplates:
+  - metadata:
+      name: zuul-var
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: {{ spec.merger.storageSize }}
+      storageClassName: {{ spec.merger.storageClassName }}
+  {%- endif %}
 ---
 apiVersion: v1
 kind: Service
