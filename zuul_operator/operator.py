@@ -44,11 +44,14 @@ def memoize_secrets(memo, logger):
                                  namespace.name, zuul.name, secret)
             resources.append(res)
 
-            # Nodepool config
-            secret = zuul.obj['spec']['launcher']['config']['secretName']
-            res = ConfigResource('spec.launcher.config.secretName',
-                                 namespace.name, zuul.name, secret)
-            resources.append(res)
+            # Nodepool config (only when using nodepool launcher type)
+            launcher = zuul.obj['spec'].get('launcher', {})
+            if launcher.get('type', 'nodepool') in ('nodepool', 'both'):
+                secret = launcher.get('config', {}).get('secretName')
+                if secret:
+                    res = ConfigResource('spec.launcher.config.secretName',
+                                         namespace.name, zuul.name, secret)
+                    resources.append(res)
     # Mutate the global instance
     memo.config_resources.clear()
     memo.config_resources.update(new_resources)
@@ -167,6 +170,13 @@ def update_fn(name, namespace, logger, old, new, memo, **kwargs):
         if new.get(key) != old.get(key):
             logger.info(f"{key} changed")
             conf_changed = True
+
+    old_launcher = old.get('launcher', {})
+    new_launcher = new.get('launcher', {})
+    if (old_launcher.get('type') != new_launcher.get('type') or
+            old_launcher.get('connection_filter') != new_launcher.get('connection_filter')):
+        logger.info("launcher conf changed")
+        conf_changed = True
 
     for key in ['registry', 'launcher', 'connections', 'externalConfig',
                 'imagePrefix', 'imagePullSecrets', 'zuulImageVersion',

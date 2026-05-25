@@ -86,11 +86,29 @@ spec:
                 launcher:
                   type: object
                   properties:
+                    type:
+                      type: string
+                      default: nodepool
+                      enum:
+                        - nodepool
+                        - zuul-launcher
+                        - both
                     config:
                       type: object
                       properties:
                         secretName:
                           type: string
+                    count:
+                      type: integer
+                      default: 1
+                      minimum: 1
+                    connection_filter:
+                      type: string
+                    storageClassName:
+                      type: string
+                    storageSize:
+                      type: string
+                      default: "50Gi"
                 executor:
                   type: object
                   properties:

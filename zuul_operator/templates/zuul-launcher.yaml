@@ -1,0 +1,92 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: zuul-launcher
+  labels:
+    app.kubernetes.io/name: zuul
+    app.kubernetes.io/instance: {{ instance_name }}
+    app.kubernetes.io/part-of: zuul
+    app.kubernetes.io/component: zuul-launcher
+spec:
+  serviceName: zuul-launcher
+  replicas: {{ spec.launcher.count }}
+  podManagementPolicy: Parallel
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: zuul
+      app.kubernetes.io/instance: {{ instance_name }}
+      app.kubernetes.io/part-of: zuul
+      app.kubernetes.io/component: zuul-launcher
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: zuul
+        app.kubernetes.io/instance: {{ instance_name }}
+        app.kubernetes.io/part-of: zuul
+        app.kubernetes.io/component: zuul-launcher
+      annotations:
+        zuulConfSha: "{{ zuul_conf_sha }}"
+    spec:
+      imagePullSecrets: {{ spec.imagePullSecrets }}
+      containers:
+      - name: launcher
+        image: {{ spec.imagePrefix }}/zuul-launcher:{{ spec.zuulImageVersion }}
+        args: ["/usr/local/bin/zuul-launcher", "-f", "-d"]
+        volumeMounts:
+        - name: zuul-config
+          mountPath: /etc/zuul
+          readOnly: true
+        - name: zuul-var
+          mountPath: /var/lib/zuul
+        - name: zookeeper-client-tls
+          mountPath: /tls/client
+          readOnly: true
+        {%- for connection_name, connection in connections.items() %}
+        {%- if 'secretName' in connection %}
+        - name: connection-{{ connection_name }}
+          mountPath: /etc/zuul/connections/{{ connection_name }}
+          readOnly: true
+        {%- endif %}
+        {%- endfor %}
+        {%- for name, c in external_config.items() %}
+        - name: {{ name }}
+          mountPath: /etc/{{ name }}
+          readOnly: true
+        {%- endfor %}
+        env: {{ spec.env | zuul_to_json }}
+      volumes:
+      {%- if spec.launcher.storageClassName == "" %}
+      - name: zuul-var
+        emptyDir: {}
+      {%- endif %}
+      - name: zuul-config
+        secret:
+          secretName: zuul-config
+      - name: zookeeper-client-tls
+        secret:
+          secretName: {{ spec.zookeeper.secretName }}
+      {%- for connection_name, connection in connections.items() %}
+      {%- if 'secretName' in connection %}
+      - name: connection-{{ connection_name }}
+        secret:
+          secretName: {{ connection['secretName'] }}
+      {%- endif %}
+      {%- endfor %}
+      {%- for name, c in external_config.items() %}
+      - name: {{ name }}
+        secret:
+          secretName: {{ c['secretName'] }}
+      {%- endfor %}
+  {%- if spec.launcher.storageClassName != "" %}
+  volumeClaimTemplates:
+  - metadata:
+      name: zuul-var
+    spec:
+      accessModes:
+      - ReadWriteOnce
+      resources:
+        requests:
+          storage: {{ spec.launcher.storageSize }}
+      storageClassName: {{ spec.launcher.storageClassName }}
+  {%- endif %}
