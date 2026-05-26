@@ -328,6 +328,7 @@ spec:
       securityContext:
         runAsUser: 10001
         runAsGroup: 10001
+        fsGroup: 10001
       containers:
       - name: executor
         image: {{ spec.imagePrefix }}/zuul-executor:{{ spec.zuulImageVersion }}
@@ -437,6 +438,7 @@ spec:
       securityContext:
         runAsUser: 10001
         runAsGroup: 10001
+        fsGroup: 10001
       containers:
       - name: merger
         image: {{ spec.imagePrefix }}/zuul-merger:{{ spec.zuulImageVersion }}
