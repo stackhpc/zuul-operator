@@ -1,6 +1,6 @@
 pbr
 kopf>=1.35.0
-kubernetes
+kubernetes!=36.0.0
 jinja2
 pymysql
 pykube-ng<22.6.0
