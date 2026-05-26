@@ -16,6 +16,7 @@ import json
 import logging
 import secrets
 import string
+import time
 
 import kopf
 import pykube.exceptions
@@ -62,6 +63,13 @@ def apply_file(api, fn, **kw):
                     log.warning("StatefulSet %s has immutable field changes; "
                                 "deleting and recreating", obj.name)
                     obj.delete(propagation_policy="Orphan")
+                    deadline = time.monotonic() + 120
+                    while obj.exists():
+                        if time.monotonic() > deadline:
+                            raise Exception(
+                                f"Timed out waiting for StatefulSet "
+                                f"{obj.name} to be deleted")
+                        time.sleep(2)
                     obj.create()
                 else:
                     raise
