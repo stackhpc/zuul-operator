@@ -13,10 +13,12 @@
 # under the License.
 
 import json
+import logging
 import secrets
 import string
 
 import kopf
+import pykube.exceptions
 import yaml
 import jinja2
 from kubernetes.client import Configuration
@@ -24,6 +26,8 @@ from kubernetes.client.api import core_v1_api
 from kubernetes.stream import stream
 
 from . import objects
+
+log = logging.getLogger("zuul_operator.utils")
 
 
 def object_from_dict(data):
@@ -51,7 +55,16 @@ def apply_file(api, fn, **kw):
         if not obj.exists():
             obj.create()
         else:
-            obj.update()
+            try:
+                obj.update()
+            except pykube.exceptions.HTTPError as e:
+                if e.code == 422 and isinstance(obj, objects.StatefulSet):
+                    log.warning("StatefulSet %s has immutable field changes; "
+                                "deleting and recreating", obj.name)
+                    obj.delete(propagation_policy="Orphan")
+                    obj.create()
+                else:
+                    raise
 
 
 def generate_password(length=32):
