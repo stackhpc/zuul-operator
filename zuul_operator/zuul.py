@@ -124,6 +124,13 @@ class Zuul:
             self.api, self.namespace, self.log)
         self.installing_cert_manager = False
 
+    @property
+    def needs_cert_manager(self):
+        # The CA issuer is only used for the managed ZK certificates
+        # and the managed registry certificate.
+        return self.manage_zk or (self.spec['registry']['count'] > 0 and
+                                  self.manage_registry_cert)
+
     def install_cert_manager(self):
         if self.cert_manager.is_installed():
             return
