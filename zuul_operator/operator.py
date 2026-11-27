@@ -114,9 +114,10 @@ def create_fn(spec, name, namespace, logger, memo, **kwargs):
     zuul.install_db()
     # Install Cert-Manager and request the CA cert before installing
     # ZK because the CRDs must exist.
-    zuul.install_cert_manager()
-    zuul.wait_for_cert_manager()
-    zuul.create_cert_manager_ca()
+    if zuul.needs_cert_manager:
+        zuul.install_cert_manager()
+        zuul.wait_for_cert_manager()
+        zuul.create_cert_manager_ca()
     # Now we can install ZK
     zuul.install_zk()
     # Wait for both to finish
@@ -152,9 +153,10 @@ def update_fn(name, namespace, logger, old, new, memo, **kwargs):
         logger.info("ZooKeeper changed")
         conf_changed = True
         # redo zk
-        zuul.install_cert_manager()
-        zuul.wait_for_cert_manager()
-        zuul.create_cert_manager_ca()
+        if zuul.needs_cert_manager:
+            zuul.install_cert_manager()
+            zuul.wait_for_cert_manager()
+            zuul.create_cert_manager_ca()
         # Now we can install ZK
         zuul.install_zk()
         zuul.wait_for_zk()
